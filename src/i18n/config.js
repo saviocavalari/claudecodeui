@@ -24,6 +24,15 @@ import enCodeEditor from './locales/en/codeEditor.json';
 // eslint-disable-next-line import-x/order
 import enTasks from './locales/en/tasks.json';
 
+import ptBRCommon from './locales/pt-BR/common.json';
+import ptBRSettings from './locales/pt-BR/settings.json';
+import ptBRAuth from './locales/pt-BR/auth.json';
+import ptBRSidebar from './locales/pt-BR/sidebar.json';
+import ptBRChat from './locales/pt-BR/chat.json';
+import ptBRCodeEditor from './locales/pt-BR/codeEditor.json';
+// eslint-disable-next-line import-x/order
+import ptBRTasks from './locales/pt-BR/tasks.json';
+
 import koCommon from './locales/ko/common.json';
 import koSettings from './locales/ko/settings.json';
 import koAuth from './locales/ko/auth.json';
@@ -96,6 +105,20 @@ import zhTWTasks from './locales/zh-TW/tasks.json';
 // Import supported languages configuration
 import { languages } from './languages.js';
 
+// One-time migration: browsers that opened this app before pt-BR existed had
+// their language auto-saved as 'en' in localStorage, which would otherwise win
+// over the new pt-BR default. Force pt-BR once. Any explicit choice the user
+// makes afterward (via Settings) is preserved, because languageChanged updates
+// userLanguage while this flag stays set.
+try {
+  if (localStorage.getItem('ptBRDefaultApplied') !== '1') {
+    localStorage.setItem('userLanguage', 'pt-BR');
+    localStorage.setItem('ptBRDefaultApplied', '1');
+  }
+} catch {
+  // localStorage unavailable (private mode / SSR) - ignore
+}
+
 // Get saved language preference from localStorage
 const getSavedLanguage = () => {
   try {
@@ -104,9 +127,9 @@ const getSavedLanguage = () => {
     if (saved && languages.some(lang => lang.value === saved)) {
       return saved;
     }
-    return 'en';
+    return 'pt-BR';
   } catch {
-    return 'en';
+    return 'pt-BR';
   }
 };
 
@@ -117,6 +140,15 @@ i18n
   .init({
     // Resources containing all translations
     resources: {
+      'pt-BR': {
+        common: ptBRCommon,
+        settings: ptBRSettings,
+        auth: ptBRAuth,
+        sidebar: ptBRSidebar,
+        chat: ptBRChat,
+        codeEditor: ptBRCodeEditor,
+        tasks: ptBRTasks,
+      },
       en: {
         common: enCommon,
         settings: enSettings,

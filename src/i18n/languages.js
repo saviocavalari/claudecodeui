@@ -10,6 +10,11 @@
 
 export const languages = [
   {
+    value: 'pt-BR',
+    label: 'Portuguese (Brazil)',
+    nativeName: 'Português (Brasil)',
+  },
+  {
     value: 'en',
     label: 'English',
     nativeName: 'English',

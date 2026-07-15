@@ -1,0 +1,269 @@
+{
+  "buttons": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "create": "Criar",
+    "edit": "Editar",
+    "close": "Fechar",
+    "confirm": "Confirmar",
+    "submit": "Enviar",
+    "retry": "Tentar novamente",
+    "refresh": "Atualizar",
+    "search": "Buscar",
+    "clear": "Limpar",
+    "copy": "Copiar",
+    "download": "Baixar",
+    "upload": "Enviar",
+    "browse": "Procurar"
+  },
+  "tabs": {
+    "chat": "Chat",
+    "shell": "Terminal",
+    "files": "Arquivos",
+    "git": "Controle de versão",
+    "tasks": "Tarefas",
+    "browser": "Navegador",
+    "computer": "Computador"
+  },
+  "status": {
+    "loading": "Carregando...",
+    "success": "Sucesso",
+    "error": "Erro",
+    "failed": "Falhou",
+    "pending": "Pendente",
+    "completed": "Concluído",
+    "inProgress": "Em andamento"
+  },
+  "messages": {
+    "savedSuccessfully": "Salvo com sucesso",
+    "deletedSuccessfully": "Excluído com sucesso",
+    "updatedSuccessfully": "Atualizado com sucesso",
+    "operationFailed": "A operação falhou",
+    "networkError": "Erro de rede. Verifique sua conexão.",
+    "unauthorized": "Não autorizado. Faça login.",
+    "notFound": "Não encontrado",
+    "invalidInput": "Entrada inválida",
+    "requiredField": "Este campo é obrigatório",
+    "unknownError": "Ocorreu um erro desconhecido"
+  },
+  "navigation": {
+    "settings": "Configurações",
+    "home": "Início",
+    "back": "Voltar",
+    "next": "Avançar",
+    "previous": "Anterior",
+    "logout": "Sair"
+  },
+  "common": {
+    "language": "Idioma",
+    "theme": "Tema",
+    "darkMode": "Modo escuro",
+    "lightMode": "Modo claro",
+    "name": "Nome",
+    "description": "Descrição",
+    "enabled": "Ativado",
+    "disabled": "Desativado",
+    "optional": "Opcional",
+    "version": "Versão",
+    "select": "Selecionar",
+    "selectAll": "Selecionar tudo",
+    "deselectAll": "Limpar seleção"
+  },
+  "time": {
+    "justNow": "Agora mesmo",
+    "minutesAgo": "há {{count}} min",
+    "hoursAgo": "há {{count}} horas",
+    "daysAgo": "há {{count}} dias",
+    "yesterday": "Ontem"
+  },
+  "fileOperations": {
+    "newFile": "Novo arquivo",
+    "newFolder": "Nova pasta",
+    "rename": "Renomear",
+    "move": "Mover",
+    "copyPath": "Copiar caminho",
+    "openInEditor": "Abrir no editor"
+  },
+  "mainContent": {
+    "loading": "Carregando CloudCLI",
+    "settingUpWorkspace": "Preparando seu espaço de trabalho...",
+    "chooseProject": "Escolha um projeto",
+    "selectProjectDescription": "Selecione um projeto na barra lateral para começar a trabalhar com o Claude. Cada projeto guarda suas conversas e o histórico de arquivos.",
+    "tip": "Dica",
+    "createProjectMobile": "Toque no botão de menu acima para acessar os projetos",
+    "createProjectDesktop": "Crie um novo projeto clicando no ícone de pasta na barra lateral",
+    "newSession": "Nova sessão",
+    "untitledSession": "Sessão sem título",
+    "projectFiles": "Arquivos do projeto"
+  },
+  "fileTree": {
+    "loading": "Carregando arquivos...",
+    "files": "Arquivos",
+    "simpleView": "Visão simples",
+    "compactView": "Visão compacta",
+    "detailedView": "Visão detalhada",
+    "searchPlaceholder": "Buscar arquivos e pastas...",
+    "clearSearch": "Limpar busca",
+    "name": "Nome",
+    "size": "Tamanho",
+    "modified": "Modificado",
+    "permissions": "Permissões",
+    "noFilesFound": "Nenhum arquivo encontrado",
+    "checkProjectPath": "Verifique se o caminho do projeto está acessível",
+    "noMatchesFound": "Nenhum resultado encontrado",
+    "tryDifferentSearch": "Tente outro termo de busca ou limpe a busca",
+    "justNow": "agora mesmo",
+    "minAgo": "há {{count}} min",
+    "hoursAgo": "há {{count}} horas",
+    "daysAgo": "há {{count}} dias",
+    "newFile": "Novo arquivo (Cmd+N)",
+    "newFolder": "Nova pasta (Cmd+Shift+N)",
+    "refresh": "Atualizar",
+    "collapseAll": "Recolher tudo",
+    "context": {
+      "rename": "Renomear",
+      "delete": "Excluir",
+      "copyPath": "Copiar caminho",
+      "download": "Baixar",
+      "newFile": "Novo arquivo",
+      "newFolder": "Nova pasta",
+      "refresh": "Atualizar",
+      "menuLabel": "Menu de contexto do arquivo",
+      "loading": "Carregando..."
+    }
+  },
+  "projectWizard": {
+    "title": "Criar novo projeto",
+    "steps": {
+      "type": "Tipo",
+      "configure": "Configurar",
+      "confirm": "Confirmar"
+    },
+    "step1": {
+      "question": "Você já tem um espaço de trabalho ou quer criar um novo?",
+      "existing": {
+        "title": "Espaço de trabalho existente",
+        "description": "Já tenho um espaço de trabalho no meu servidor e só preciso adicioná-lo à lista de projetos"
+      },
+      "new": {
+        "title": "Novo espaço de trabalho",
+        "description": "Criar um novo espaço de trabalho, opcionalmente clonando de um repositório do GitHub"
+      }
+    },
+    "step2": {
+      "existingPath": "Caminho do espaço de trabalho",
+      "newPath": "Caminho do espaço de trabalho",
+      "existingPlaceholder": "/caminho/para/o/espaco/existente",
+      "newPlaceholder": "/caminho/para/o/novo/espaco",
+      "existingHelp": "Caminho completo até o diretório do seu espaço de trabalho existente",
+      "newHelp": "Caminho completo até o diretório do seu espaço de trabalho",
+      "githubUrl": "URL do GitHub (opcional)",
+      "githubPlaceholder": "https://github.com/usuario/repositorio",
+      "githubHelp": "Opcional: informe uma URL do GitHub para clonar um repositório",
+      "githubAuth": "Autenticação do GitHub (opcional)",
+      "githubAuthHelp": "Necessária apenas para repositórios privados. Repositórios públicos podem ser clonados sem autenticação.",
+      "loadingTokens": "Carregando tokens salvos...",
+      "storedToken": "Token salvo",
+      "newToken": "Novo token",
+      "nonePublic": "Nenhum (público)",
+      "selectToken": "Selecionar token",
+      "selectTokenPlaceholder": "-- Selecione um token --",
+      "tokenPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "tokenHelp": "Este token será usado apenas para esta operação",
+      "publicRepoInfo": "Repositórios públicos não exigem autenticação. Você pode pular o token se estiver clonando um repositório público.",
+      "noTokensHelp": "Nenhum token salvo disponível. Você pode adicionar tokens em Configurações → Chaves de API para reutilizá-los mais facilmente.",
+      "optionalTokenPublic": "Token do GitHub (opcional para repositórios públicos)",
+      "tokenPublicPlaceholder": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (deixe vazio para repositórios públicos)"
+    },
+    "step3": {
+      "reviewConfig": "Revise sua configuração",
+      "existingWorkspace": "Espaço de trabalho existente",
+      "newWorkspace": "Novo espaço de trabalho",
+      "path": "Caminho:",
+      "cloneFrom": "Clonar de:",
+      "authentication": "Autenticação:",
+      "usingStoredToken": "Usando token salvo:",
+      "usingProvidedToken": "Usando o token informado",
+      "noAuthentication": "Sem autenticação",
+      "sshKey": "Chave SSH",
+      "existingInfo": "O espaço de trabalho será adicionado à sua lista de projetos e ficará disponível para sessões do Claude/Cursor.",
+      "newWithClone": "O repositório será clonado a partir desta pasta.",
+      "newEmpty": "O espaço de trabalho será adicionado à sua lista de projetos e ficará disponível para sessões do Claude/Cursor.",
+      "cloningRepository": "Clonando repositório..."
+    },
+    "buttons": {
+      "cancel": "Cancelar",
+      "back": "Voltar",
+      "next": "Avançar",
+      "createProject": "Criar projeto",
+      "creating": "Criando...",
+      "cloning": "Clonando..."
+    },
+    "errors": {
+      "selectType": "Escolha se você já tem um espaço de trabalho ou quer criar um novo",
+      "providePath": "Informe o caminho do espaço de trabalho",
+      "failedToCreate": "Não foi possível criar o espaço de trabalho",
+      "failedToCreateFolder": "Não foi possível criar a pasta"
+    }
+  },
+  "notifications": {
+    "genericTool": "uma ferramenta",
+    "codes": {
+      "generic": {
+        "info": {
+          "title": "Notificação"
+        }
+      },
+      "permission": {
+        "required": {
+          "title": "Ação necessária",
+          "body": "{{toolName}} está aguardando sua decisão."
+        }
+      },
+      "run": {
+        "stopped": {
+          "title": "Execução interrompida",
+          "body": "Motivo: {{reason}}"
+        },
+        "failed": {
+          "title": "Execução falhou"
+        }
+      },
+      "agent": {
+        "notification": {
+          "title": "Notificação do agente"
+        }
+      }
+    }
+  },
+  "versionUpdate": {
+    "title": "Atualização disponível",
+    "newVersionReady": "Uma nova versão está pronta",
+    "currentVersion": "Versão atual",
+    "latestVersion": "Versão mais recente",
+    "whatsNew": "Novidades:",
+    "viewFullRelease": "Ver release completa",
+    "updateProgress": "Progresso da atualização:",
+    "manualUpgrade": "Atualização manual:",
+    "npmUpgradeCommand": "npm install -g @cloudcli-ai/cloudcli@latest",
+    "manualUpgradeHint": "Ou clique em \"Atualizar agora\" para rodar a atualização automaticamente.",
+    "updateCompleted": "Atualização concluída com sucesso!",
+    "restartServer": "Reinicie o servidor para aplicar as mudanças.",
+    "updateFailed": "A atualização falhou",
+    "buttons": {
+      "close": "Fechar",
+      "later": "Mais tarde",
+      "copyCommand": "Copiar comando",
+      "updateNow": "Atualizar agora",
+      "updating": "Atualizando..."
+    },
+    "ariaLabels": {
+      "closeModal": "Fechar janela de atualização de versão",
+      "showSidebar": "Mostrar barra lateral",
+      "settings": "Configurações",
+      "updateAvailable": "Atualização disponível",
+      "closeSidebar": "Fechar barra lateral"
+    }
+  }
+}
