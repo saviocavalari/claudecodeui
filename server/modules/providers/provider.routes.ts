@@ -7,6 +7,7 @@ import { providerModelsService } from '@/modules/providers/services/provider-mod
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
+import { projectAccessDb, projectsDb } from '@/modules/database/index.js';
 import type {
   LLMProvider,
   McpScope,
@@ -535,6 +536,24 @@ router.post(
     const body = (req.body ?? {}) as Record<string, unknown>;
     const provider = parseProvider(body.provider);
     const projectPath = typeof body.projectPath === 'string' ? body.projectPath : '';
+
+    // Multi-user guard: a member may only open a session (which is what lets the
+    // AI run in a working directory) inside a project they were granted. This is
+    // the primary gate for "can this person use my AI on that folder".
+    const user = (req as Request & { user?: { id?: number | string; role?: string } }).user;
+    if (user?.role !== 'admin') {
+      const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
+      const project = projectsDb.getProjectPath(projectPath);
+      const allowed =
+        Number.isFinite(userId) &&
+        project !== null &&
+        projectAccessDb.hasAccess(userId, project.project_id);
+      if (!allowed) {
+        res.status(403).json({ error: 'You do not have access to this project.' });
+        return;
+      }
+    }
+
     const result = sessionsService.createAppSession(provider, projectPath);
     res.status(201).json(createApiSuccessResponse(result));
   }),

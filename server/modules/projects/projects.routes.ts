@@ -7,12 +7,37 @@ import { AppError, asyncHandler, createApiSuccessResponse } from '@/shared/utils
 import { getArchivedProjectsWithSessions, getProjectSessionsPage, getProjectsWithSessions } from '@/modules/projects/services/projects-with-sessions-fetch.service.js';
 import { deleteOrArchiveProject, restoreArchivedProject } from '@/modules/projects/services/project-delete.service.js';
 import { applyLegacyStarredProjectIds, toggleProjectStar } from '@/modules/projects/services/project-star.service.js';
+import { projectAccessDb } from '@/modules/database/index.js';
 
 const router = express.Router();
 
 type AuthenticatedUser = {
   id?: number | string;
+  role?: string;
 };
+
+function getRequestUser(req: express.Request): AuthenticatedUser | undefined {
+  return (req as express.Request & { user?: AuthenticatedUser }).user;
+}
+
+function requestUserIsAdmin(req: express.Request): boolean {
+  return getRequestUser(req)?.role === 'admin';
+}
+
+// Multi-user guard: any route that targets a specific project by id is gated
+// here. Admins pass through; members must have an explicit grant. Runs before
+// every `:projectId` handler below (rename, emoji, star, delete, sessions, ...).
+router.param('projectId', (req, res, next, projectId: string) => {
+  const user = getRequestUser(req);
+  if (user?.role === 'admin') {
+    return next();
+  }
+  const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
+  if (Number.isFinite(userId) && projectAccessDb.hasAccess(userId, projectId)) {
+    return next();
+  }
+  return res.status(403).json({ error: 'You do not have access to this project.' });
+});
 
 function readQueryStringValue(value: unknown): string {
   if (typeof value === 'string') {
@@ -73,10 +98,14 @@ router.get(
       readQueryStringValue(req.query.skipSync).trim() === '1';
     const sessionsLimit = readOptionalNumericQueryValue(req.query.sessionsLimit) ?? undefined;
     const sessionsOffset = readOptionalNumericQueryValue(req.query.sessionsOffset) ?? undefined;
+    const user = getRequestUser(req);
+    const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
     const projects = await getProjectsWithSessions({
       skipSynchronization,
       sessionsLimit,
       sessionsOffset,
+      userId: Number.isFinite(userId) ? userId : null,
+      isAdmin: requestUserIsAdmin(req),
     });
     res.json(projects);
   }),
@@ -84,7 +113,12 @@ router.get(
 
 router.get(
   '/archived',
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    // Archive management is an owner concern; members never see it.
+    if (!requestUserIsAdmin(req)) {
+      res.json(createApiSuccessResponse({ projects: [] }));
+      return;
+    }
     const projects = await getArchivedProjectsWithSessions();
     res.json(createApiSuccessResponse({ projects }));
   }),
@@ -104,6 +138,12 @@ router.get(
 router.post(
   '/create-project',
   asyncHandler(async (req, res) => {
+    if (!requestUserIsAdmin(req)) {
+      throw new AppError('Only an admin can create projects.', {
+        code: 'ADMIN_REQUIRED',
+        statusCode: 403,
+      });
+    }
     const requestBody = req.body as Record<string, unknown>;
     const projectPath = typeof requestBody.path === 'string' ? requestBody.path : '';
     const customName = typeof requestBody.customName === 'string' ? requestBody.customName : null;
@@ -154,6 +194,10 @@ router.post(
 );
 
 router.get('/clone-progress', async (req, res) => {
+  if (!requestUserIsAdmin(req)) {
+    res.status(403).json({ error: 'Only an admin can clone projects.' });
+    return;
+  }
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');

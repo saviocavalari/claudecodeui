@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { projectsDb, sessionsDb } from '@/modules/database/index.js';
+import { projectAccessDb, projectsDb, sessionsDb } from '@/modules/database/index.js';
 import { sessionSynchronizerService } from '@/modules/providers/index.js';
 import { WS_OPEN_STATE, connectedClients } from '@/modules/websocket/index.js';
 import type { RealtimeClientConnection } from '@/shared/types.js';
@@ -53,6 +53,10 @@ type GetProjectsWithSessionsOptions = {
   skipSynchronization?: boolean;
   sessionsLimit?: number;
   sessionsOffset?: number;
+  // Multi-user access control: when the requester is a member (not admin), the
+  // list is restricted to the projects granted to this user id.
+  userId?: number | null;
+  isAdmin?: boolean;
 };
 
 type SessionPaginationOptions = {
@@ -186,7 +190,7 @@ export async function getProjectsWithSessions(
     await sessionSynchronizerService.synchronizeSessions();
   }
 
-  const projectRows = projectsDb.getProjectPaths() as Array<{
+  const allProjectRows = projectsDb.getProjectPaths() as Array<{
     project_id: string;
     project_path: string;
     custom_project_name?: string | null;
@@ -194,6 +198,16 @@ export async function getProjectsWithSessions(
     emoji?: string | null;
     folder?: string | null;
   }>;
+
+  // Members only see projects explicitly granted to them; admins see all.
+  const projectRows =
+    options.isAdmin || options.userId === undefined || options.userId === null
+      ? allProjectRows
+      : (() => {
+          const allowed = new Set(projectAccessDb.listProjectIdsForUser(options.userId));
+          return allProjectRows.filter((row) => allowed.has(row.project_id));
+        })();
+
   const totalProjects = projectRows.length;
   const projects: ProjectListItem[] = [];
   let processedProjects = 0;

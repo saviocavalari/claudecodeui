@@ -33,7 +33,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <LoginForm />;
   }
 
-  if (!hasCompletedOnboarding) {
+  // Members never run the onboarding flow: it configures shared/owner-level
+  // settings (provider auth, etc.) that only an admin should touch.
+  if (!hasCompletedOnboarding && user.role !== 'member') {
     return <Onboarding onComplete={refreshOnboardingStatus} />;
   }
 

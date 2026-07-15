@@ -1,6 +1,7 @@
-import { Folder, Search } from 'lucide-react';
+import { Folder, Search, Clock } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { LoadingProgress } from '../../../../types/app';
+import { useAuth } from '../../../auth/context/AuthContext';
 
 type SidebarProjectsStateProps = {
   isLoading: boolean;
@@ -17,6 +18,9 @@ export default function SidebarProjectsState({
   filteredProjectsCount,
   t,
 }: SidebarProjectsStateProps) {
+  const { user } = useAuth();
+  const isMember = Boolean(user) && user?.role !== 'admin';
+
   if (isLoading) {
     return (
       <div className="px-4 py-12 text-center md:py-8">
@@ -52,6 +56,25 @@ export default function SidebarProjectsState({
   }
 
   if (projectsCount === 0) {
+    // A member with no granted projects is waiting on the admin, not missing a
+    // CLI setup — show a message that matches their situation.
+    if (isMember) {
+      return (
+        <div className="px-4 py-12 text-center md:py-8">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted md:mb-3">
+            <Clock className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="mb-2 text-base font-medium text-foreground md:mb-1">
+            Aguardando liberação
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Sua conta foi criada. Assim que o administrador liberar um projeto para você,
+            ele aparece aqui.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="px-4 py-12 text-center md:py-8">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted md:mb-3">

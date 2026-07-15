@@ -24,11 +24,13 @@ const initialState: LoginFormState = {
  */
 export default function LoginForm() {
   const { t } = useTranslation('auth');
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [formState, setFormState] = useState<LoginFormState>(initialState);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isRegister = mode === 'register';
 
   const updateField = useCallback((field: keyof LoginFormState, value: string) => {
     setFormState((previous) => ({ ...previous, [field]: value }));
@@ -45,20 +47,31 @@ export default function LoginForm() {
         return;
       }
 
+      if (isRegister && formState.password.length < 6) {
+        setErrorMessage('A senha precisa ter pelo menos 6 caracteres.');
+        return;
+      }
+
       setIsSubmitting(true);
-      const result = await login(formState.username.trim(), formState.password);
+      const result = isRegister
+        ? await register(formState.username.trim(), formState.password)
+        : await login(formState.username.trim(), formState.password);
       if (!result.success) {
         setErrorMessage(result.error);
       }
       setIsSubmitting(false);
     },
-    [formState.password, formState.username, login, t],
+    [formState.password, formState.username, isRegister, login, register, t],
   );
 
   return (
     <AuthScreenLayout
-      title={t('login.title')}
-      description={t('login.description')}
+      title={isRegister ? 'Criar conta' : t('login.title')}
+      description={
+        isRegister
+          ? 'Crie sua conta. O administrador libera os projetos que você poderá acessar.'
+          : t('login.description')
+      }
       footerText="Enter your credentials to access CloudCLI"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -81,7 +94,7 @@ export default function LoginForm() {
           placeholder={t('login.placeholders.password')}
           isDisabled={isSubmitting}
           type="password"
-          autoComplete="current-password"
+          autoComplete={isRegister ? 'new-password' : 'current-password'}
           icon={Lock}
         />
 
@@ -95,12 +108,38 @@ export default function LoginForm() {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {t('login.loading')}
+              {isRegister ? 'Criando conta...' : t('login.loading')}
             </>
           ) : (
-            t('login.submit')
+            isRegister ? 'Criar conta' : t('login.submit')
           )}
         </button>
+
+        <div className="pt-1 text-center text-sm text-muted-foreground">
+          {isRegister ? (
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline"
+              onClick={() => {
+                setMode('login');
+                setErrorMessage('');
+              }}
+            >
+              Já tem conta? Entrar
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="font-medium text-primary hover:underline"
+              onClick={() => {
+                setMode('register');
+                setErrorMessage('');
+              }}
+            >
+              Não tem conta? Criar conta
+            </button>
+          )}
+        </div>
       </form>
     </AuthScreenLayout>
   );

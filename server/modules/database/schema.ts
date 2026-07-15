@@ -8,7 +8,26 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN DEFAULT 1,
     git_name TEXT,
     git_email TEXT,
-    has_completed_onboarding BOOLEAN DEFAULT 0
+    has_completed_onboarding BOOLEAN DEFAULT 0,
+    -- 'admin' can see/manage every project and every user.
+    -- 'member' can only see projects explicitly granted in user_projects.
+    role TEXT NOT NULL DEFAULT 'member'
+);
+`;
+
+/**
+ * Per-user project access grants. A `member` user only sees and can only touch
+ * the projects listed here for their user_id; an `admin` bypasses this table
+ * entirely. Rows are cleaned up automatically when a user or project is removed.
+ */
+export const USER_PROJECTS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS user_projects (
+    user_id INTEGER NOT NULL,
+    project_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, project_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
 );
 `;
 
@@ -173,6 +192,10 @@ CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_enabled ON notific
 ${PROJECTS_TABLE_SCHEMA_SQL}
 -- NOTE: These indexes are created in migrations after legacy table-shape repairs.
 -- Creating them here can fail on upgraded installs where projects lacks those columns.
+
+${USER_PROJECTS_TABLE_SCHEMA_SQL}
+CREATE INDEX IF NOT EXISTS idx_user_projects_user ON user_projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_projects_project ON user_projects(project_id);
 
 ${SESSIONS_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id);

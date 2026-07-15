@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 export type AuthUser = {
   id?: number | string;
   username: string;
+  // 'admin' owns the installation and manages users/project access;
+  // 'member' only sees projects an admin granted them.
+  role?: string;
   [key: string]: unknown;
 };
 

@@ -60,6 +60,32 @@ export const api = {
     logout: () => authenticatedFetch('/api/auth/logout', { method: 'POST' }),
   },
 
+  // Admin endpoints (admin role required). User management + project access.
+  admin: {
+    users: () => authenticatedFetch('/api/admin/users'),
+    projects: () => authenticatedFetch('/api/admin/projects'),
+    setUserActive: (userId, isActive) =>
+      authenticatedFetch(`/api/admin/users/${userId}/active`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive }),
+      }),
+    setUserRole: (userId, role) =>
+      authenticatedFetch(`/api/admin/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      }),
+    setUserProjects: (userId, projectIds) =>
+      authenticatedFetch(`/api/admin/users/${userId}/projects`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectIds }),
+      }),
+    deleteUser: (userId) =>
+      authenticatedFetch(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+  },
+
   // Protected endpoints
   // config endpoint removed - no longer needed (frontend uses window.location)
   // After the projectName → projectId migration the path/query identifier is

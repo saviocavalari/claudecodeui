@@ -81,7 +81,8 @@ const generateToken = (user) => {
   return jwt.sign(
     {
       userId: user.id,
-      username: user.username
+      username: user.username,
+      role: user.role || 'member'
     },
     JWT_SECRET,
     { expiresIn: '7d' }
@@ -116,7 +117,7 @@ const authenticateWebSocket = (token) => {
     if (!user) {
       return null;
     }
-    return { userId: user.id, username: user.username };
+    return { id: user.id, userId: user.id, username: user.username, role: user.role };
   } catch (error) {
     console.error('WebSocket token verification error:', error);
     return null;

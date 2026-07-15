@@ -6,6 +6,7 @@ import pty, { type IPty } from 'node-pty';
 import { WebSocket, type RawData } from 'ws';
 
 import { parseIncomingJsonObject } from '@/shared/utils.js';
+import { userIdCanAccessProjectPath } from '@/modules/database/index.js';
 
 type ShellIncomingMessage = {
   type?: string;
@@ -224,7 +225,8 @@ function prioritizeUserNpmGlobalBin(env: NodeJS.ProcessEnv): { key: string; valu
  */
 export function handleShellConnection(
   ws: WebSocket,
-  dependencies: ShellWebSocketDependencies
+  dependencies: ShellWebSocketDependencies,
+  userId: string | number | null = null
 ): void {
   console.log('[INFO] Shell websocket connected');
 
@@ -242,6 +244,20 @@ export function handleShellConnection(
 
       if (data.type === 'init') {
         const projectPath = readString(data.projectPath, process.cwd());
+
+        // Multi-user guard: a member may only open a terminal inside a project
+        // they were granted. Denies the process.cwd() fallback too (which would
+        // otherwise drop a member into the app's own directory).
+        if (!userIdCanAccessProjectPath(userId, projectPath)) {
+          ws.send(
+            JSON.stringify({
+              type: 'error',
+              message: 'You do not have access to this project.',
+            })
+          );
+          return;
+        }
+
         const sessionId = readString(data.sessionId) || null;
         const hasSession = readBoolean(data.hasSession);
         const provider = readString(data.provider, 'claude');

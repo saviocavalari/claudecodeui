@@ -8,6 +8,7 @@ import {
   PUSH_SUBSCRIPTIONS_TABLE_SCHEMA_SQL,
   SESSIONS_TABLE_SCHEMA_SQL,
   USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL,
+  USER_PROJECTS_TABLE_SCHEMA_SQL,
   VAPID_KEYS_TABLE_SCHEMA_SQL,
 } from '@/modules/database/schema.js';
 
@@ -438,6 +439,15 @@ export const runMigrations = (db: Database) => {
       'has_completed_onboarding',
       'BOOLEAN DEFAULT 0'
     );
+    // Multi-user access control: role gates whether a user sees every project
+    // (admin) or only explicitly granted ones (member).
+    addColumnToTableIfNotExists(
+      db,
+      'users',
+      userColumnNames,
+      'role',
+      "TEXT NOT NULL DEFAULT 'member'"
+    );
 
     db.exec(APP_CONFIG_TABLE_SCHEMA_SQL);
     db.exec(USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL);
@@ -463,6 +473,26 @@ export const runMigrations = (db: Database) => {
     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_is_archived ON sessions(isArchived)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_projects_is_starred ON projects(isStarred)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_projects_is_archived ON projects(isArchived)');
+
+    // Per-user project access grants (multi-user support). Created after the
+    // projects table is in its final shape so the project_id foreign key is valid.
+    db.exec(USER_PROJECTS_TABLE_SCHEMA_SQL);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_user_projects_user ON user_projects(user_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_user_projects_project ON user_projects(project_id)');
+
+    // Promote the original (single) account to admin when upgrading an existing
+    // install: if nobody is an admin yet, the earliest-created user becomes one.
+    // This keeps the owner in full control after multi-user support is enabled.
+    const hasAdmin = db.prepare("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1").get();
+    if (!hasAdmin) {
+      const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get() as
+        | { id: number }
+        | undefined;
+      if (firstUser) {
+        console.log('Running migration: Promoting first user to admin role');
+        db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(firstUser.id);
+      }
+    }
 
     db.exec('DROP INDEX IF EXISTS idx_session_names_lookup');
     db.exec('DROP INDEX IF EXISTS idx_sessions_workspace_path');

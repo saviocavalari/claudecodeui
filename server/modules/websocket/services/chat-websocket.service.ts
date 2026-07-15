@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import type { WebSocket } from 'ws';
 
-import { sessionsDb } from '@/modules/database/index.js';
+import { sessionsDb, userIdCanAccessProjectPath } from '@/modules/database/index.js';
 import { chatRunRegistry } from '@/modules/websocket/services/chat-run-registry.service.js';
 import { connectedClients, WS_OPEN_STATE } from '@/modules/websocket/services/websocket-state.service.js';
 import { getGlobalImageAssetsDir, normalizeImageDescriptors } from '@/shared/image-attachments.js';
@@ -156,6 +156,18 @@ async function handleChatSend(
       ws,
       'SESSION_NOT_FOUND',
       `Session "${sessionId}" was not found. Create it via POST /api/providers/sessions first.`,
+      sessionId
+    );
+    return;
+  }
+
+  // Multi-user guard: block a member from running the AI in a project they were
+  // not granted, even if they somehow obtained a session id for it.
+  if (!userIdCanAccessProjectPath(userId, session.project_path ?? null)) {
+    sendProtocolError(
+      ws,
+      'PROJECT_ACCESS_DENIED',
+      'You do not have access to this project.',
       sessionId
     );
     return;

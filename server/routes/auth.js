@@ -38,23 +38,22 @@ router.post('/register', async (req, res) => {
     // Use a transaction to prevent race conditions
     db.prepare('BEGIN').run();
     try {
-      // Check if users already exist (only allow one user)
-      const hasUsers = userDb.hasUsers();
-      if (hasUsers) {
-        db.prepare('ROLLBACK').run();
-        return res.status(403).json({ error: 'User already exists. This is a single-user system.' });
-      }
-      
+      // The very first account to register becomes the admin/owner of the
+      // installation. Everyone who signs up afterwards is a member: they can
+      // log in but see no projects until an admin grants access.
+      const isFirstUser = !userDb.hasUsers();
+      const role = isFirstUser ? 'admin' : 'member';
+
       // Hash password
       const saltRounds = 12;
       const passwordHash = await bcrypt.hash(password, saltRounds);
-      
+
       // Create user
-      const user = userDb.createUser(username, passwordHash);
-      
+      const user = userDb.createUser(username, passwordHash, role);
+
       // Generate token
-      const token = generateToken(user);
-      
+      const token = generateToken({ ...user, role });
+
       db.prepare('COMMIT').run();
 
       // Update last login (non-fatal, outside transaction)
@@ -62,7 +61,7 @@ router.post('/register', async (req, res) => {
 
       res.json({
         success: true,
-        user: { id: user.id, username: user.username },
+        user: { id: user.id, username: user.username, role },
         token
       });
     } catch (error) {
@@ -110,10 +109,10 @@ router.post('/login', async (req, res) => {
     
     res.json({
       success: true,
-      user: { id: user.id, username: user.username },
+      user: { id: user.id, username: user.username, role: user.role },
       token
     });
-    
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });

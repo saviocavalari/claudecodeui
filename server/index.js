@@ -56,6 +56,7 @@ import agentRoutes from './routes/agent.js';
 import projectModuleRoutes from './modules/projects/projects.routes.js';
 import notificationRoutes from './modules/notifications/notifications.routes.js';
 import userRoutes from './routes/user.js';
+import adminRoutes from './routes/admin.js';
 import pluginsRoutes from './routes/plugins.js';
 import providerRoutes from './modules/providers/provider.routes.js';
 import voiceRoutes from './voice-proxy.js';
@@ -67,6 +68,7 @@ import { startEnabledPluginServers, stopAllPlugins, getPluginPort } from './util
 import { initializeDatabase, projectsDb, sessionsDb } from './modules/database/index.js';
 import { configureWebPush } from './services/vapid-keys.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
+import { enforceProjectIdAccess, enforceProjectFieldAccess, requireAdmin } from './middleware/project-access.js';
 import { IS_PLATFORM } from './constants/config.js';
 import { c } from './utils/colors.js';
 
@@ -180,8 +182,9 @@ app.use('/api/projects', authenticateToken, projectModuleRoutes);
 // Chat image asset upload/serving (global ~/.cloudcli/assets store, protected)
 app.use('/api/assets', authenticateToken, assetsRoutes);
 
-// Git API Routes (protected)
-app.use('/api/git', authenticateToken, gitRoutes);
+// Git API Routes (protected). Members may only run git against projects they
+// were granted; the project id travels in the `project` query/body field.
+app.use('/api/git', authenticateToken, enforceProjectFieldAccess, gitRoutes);
 
 // Cursor API Routes (protected)
 app.use('/api/cursor', authenticateToken, cursorRoutes);
@@ -202,6 +205,9 @@ app.use('/api/notifications', authenticateToken, notificationRoutes);
 
 // User API Routes (protected)
 app.use('/api/user', authenticateToken, userRoutes);
+
+// Admin API Routes (admin only): user management + per-user project access
+app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 
 // Plugins API Routes (protected)
 app.use('/api/plugins', authenticateToken, pluginsRoutes);
@@ -329,7 +335,7 @@ const expandWorkspacePath = (inputPath) => {
 };
 
 // Browse filesystem endpoint for project suggestions - uses existing getFileTree
-app.get('/api/browse-filesystem', authenticateToken, async (req, res) => {
+app.get('/api/browse-filesystem', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { path: dirPath } = req.query;
 
@@ -450,7 +456,7 @@ app.post('/api/create-folder', authenticateToken, async (req, res) => {
 });
 
 // Read file content endpoint
-app.get('/api/projects/:projectId/file', authenticateToken, async (req, res) => {
+app.get('/api/projects/:projectId/file', authenticateToken, enforceProjectIdAccess, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { filePath } = req.query;
@@ -492,7 +498,7 @@ app.get('/api/projects/:projectId/file', authenticateToken, async (req, res) => 
 });
 
 // Serve raw file bytes for previews and downloads.
-app.get('/api/projects/:projectId/files/content', authenticateToken, async (req, res) => {
+app.get('/api/projects/:projectId/files/content', authenticateToken, enforceProjectIdAccess, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { path: filePath } = req.query;
@@ -600,7 +606,7 @@ app.put('/api/projects/:projectId/file', authenticateToken, async (req, res) => 
     }
 });
 
-app.get('/api/projects/:projectId/files', authenticateToken, async (req, res) => {
+app.get('/api/projects/:projectId/files', authenticateToken, enforceProjectIdAccess, async (req, res) => {
     try {
 
         // Using fsPromises from import
@@ -675,7 +681,7 @@ function validateFilename(name) {
 }
 
 // POST /api/projects/:projectId/files/create - Create new file or directory
-app.post('/api/projects/:projectId/files/create', authenticateToken, async (req, res) => {
+app.post('/api/projects/:projectId/files/create', authenticateToken, enforceProjectIdAccess, async (req, res) => {
     try {
         const { projectId } = req.params;
         const { path: parentPath, type, name } = req.body;
@@ -1062,14 +1068,14 @@ const uploadFilesHandler = async (req, res) => {
     });
 };
 
-app.post('/api/projects/:projectId/files/upload', authenticateToken, uploadFilesHandler);
+app.post('/api/projects/:projectId/files/upload', authenticateToken, enforceProjectIdAccess, uploadFilesHandler);
 
 // Chat image uploads moved to POST /api/assets/images (server/modules/assets),
 // which stores them in the global ~/.cloudcli/assets folder.
 
 // Get token usage for a specific session. `projectId` is the DB primary key;
 // the Claude branch below resolves it to an absolute path via the DB.
-app.get('/api/projects/:projectId/sessions/:sessionId/token-usage', authenticateToken, async (req, res) => {
+app.get('/api/projects/:projectId/sessions/:sessionId/token-usage', authenticateToken, enforceProjectIdAccess, async (req, res) => {
     try {
         const { projectId, sessionId } = req.params;
         const homeDir = os.homedir();

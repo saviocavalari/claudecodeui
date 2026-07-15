@@ -302,7 +302,7 @@ export default function SidebarProjectItem({
         <Button
           variant="ghost"
           className={cn(
-            'hidden md:flex w-full justify-between p-2 h-auto font-normal hover:bg-accent/50',
+            'hidden md:flex w-full flex-col items-stretch gap-1 p-2 h-auto font-normal hover:bg-accent/50',
             isSelected && 'bg-accent text-accent-foreground',
             isStarred &&
               !isSelected &&
@@ -310,10 +310,13 @@ export default function SidebarProjectItem({
           )}
           onClick={selectAndToggleProject}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          {/* Primary row: star + name get the full width; the action icons below
+              are invisible until hover, so keeping them out of this row stops
+              them from reserving space and truncating long project names. */}
+          <div className="flex w-full items-center gap-3">
             <div
               className={cn(
-                'w-6 h-6 flex items-center justify-center rounded cursor-pointer transition-all duration-200',
+                'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded cursor-pointer transition-all duration-200',
                 isStarred
                   ? 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
                   : 'opacity-40 hover:opacity-100 hover:bg-accent',
@@ -333,52 +336,36 @@ export default function SidebarProjectItem({
                 )}
               />
             </div>
-            <div className="min-w-0 flex-1 text-left">
-              {isEditing ? (
-                <div className="space-y-1">
-                  <input
-                    type="text"
-                    value={editingName}
-                    onChange={(event) => onEditingNameChange(event.target.value)}
-                    className="w-full rounded border border-border bg-background px-2 py-1 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                    placeholder={t('projects.projectNamePlaceholder')}
-                    autoFocus
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        saveProjectName();
-                      }
-                      if (event.key === 'Escape') {
-                        onCancelEditingProject();
-                      }
-                    }}
-                  />
-                  <div className="truncate text-xs text-muted-foreground" title={project.fullPath}>
-                    {project.fullPath}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="truncate text-sm font-normal text-foreground" title={project.displayName}>
-                    {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
-                    {project.displayName}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {sessionCountDisplay}
-                    {project.fullPath !== project.displayName && (
-                      <span className="ml-1 opacity-60" title={project.fullPath}>
-                        {' - '}
-                        {project.fullPath.length > 25 ? `...${project.fullPath.slice(-22)}` : project.fullPath}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div className="flex flex-shrink-0 items-center gap-1">
             {isEditing ? (
-              <>
+              <input
+                type="text"
+                value={editingName}
+                onChange={(event) => onEditingNameChange(event.target.value)}
+                className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
+                placeholder={t('projects.projectNamePlaceholder')}
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    saveProjectName();
+                  }
+                  if (event.key === 'Escape') {
+                    onCancelEditingProject();
+                  }
+                }}
+              />
+            ) : (
+              <div
+                className="min-w-0 flex-1 truncate text-left text-sm font-medium text-foreground"
+                title={project.displayName}
+              >
+                {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
+                {project.displayName}
+              </div>
+            )}
+
+            {isEditing ? (
+              <div className="flex flex-shrink-0 items-center gap-1">
                 <div
                   className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-green-600 transition-colors hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-900/20"
                   onClick={(event) => {
@@ -397,9 +384,40 @@ export default function SidebarProjectItem({
                 >
                   <X className="h-3 w-3" />
                 </div>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="flex-shrink-0">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Secondary row: session count / path on the left, folder / emoji /
+              edit / delete actions on the right. Moved here (off the name row)
+              so they no longer squeeze the project name. */}
+          <div className="flex items-center justify-between gap-2 pl-9">
+            <div className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
+              {isEditing ? (
+                project.fullPath
+              ) : (
+                <>
+                  {sessionCountDisplay}
+                  {project.fullPath !== project.displayName && (
+                    <span className="ml-1 opacity-60" title={project.fullPath}>
+                      {' - '}
+                      {project.fullPath.length > 25 ? `...${project.fullPath.slice(-22)}` : project.fullPath}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {!isEditing && (
+              <div className="flex flex-shrink-0 items-center gap-1">
                 <div
                   className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
                   onClick={(event) => {
@@ -440,12 +458,7 @@ export default function SidebarProjectItem({
                 >
                   <Trash2 className="h-3 w-3 text-red-600 dark:text-red-400" />
                 </div>
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-                )}
-              </>
+              </div>
             )}
           </div>
         </Button>
