@@ -1,0 +1,48 @@
+/*
+ * Pharmes - ajustes de celular/iPhone para o Cloud CLI (claudecodeui).
+ * Injetado por cima do app, sem alterar o codigo dele (mesmo mecanismo do
+ * pharmes-temas.js). Servido de public/ (cache com revalidacao).
+ */
+
+/* Corrige o zoom automatico do iOS ao focar o campo de chat: o Safari da
+   zoom em qualquer campo com fonte < 16px. O div-espelho de mencoes usa a
+   mesma classe e precisa da mesma fonte para o realce nao desalinhar. */
+textarea[data-slot="prompt-input-textarea"],
+.chat-input-placeholder {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+/* Rede de seguranca: demais campos de texto no iOS tambem com fonte >= 16px */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe-area inferior na barra de digitacao: tira os botoes (enviar/anexar)
+   de tras da barra de gestos do iPhone. Mantem o espacamento base do app. */
+.chat-composer-shell {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+@media (min-width: 640px) {
+  .chat-composer-shell {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Em modo app instalado (PWA), da safe-area inferior ao shell fixo.
+   Usa padding-bottom, NAO 'bottom': o app controla bottom com
+   var(--keyboard-height) inline para acompanhar o teclado. */
+body.pwa-mode .fixed.inset-0 {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 100dvh em vez de 100vh: evita a tela "pular" quando o teclado abre */
+#root {
+  min-height: 100dvh;
+}
+body.pwa-mode #root {
+  height: 100dvh;
+}
