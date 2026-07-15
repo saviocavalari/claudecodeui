@@ -1,0 +1,55 @@
+{
+  "atualizado_em": "2026-07-14",
+  "observacao": "Este painel mostra apenas nomes e descricoes. As credenciais em si ficam em ~/.secrets (fora do git) e nunca aparecem aqui.",
+  "conectores": [
+    {
+      "id": "firebird-espelho",
+      "nome": "Firebird Espelho (Formula Certa)",
+      "descricao": "Copia somente-leitura do banco do ERP Formula Certa (pharmesjf2, porta 3052). Use para consultas e analises sem risco de mexer na producao.",
+      "arquivo": "~/.secrets/conectores/firebird-espelho.env",
+      "variaveis": ["FAGRON_DB_HOST_WAN", "FAGRON_DB_PORT", "FAGRON_DB_PATH", "FAGRON_DB_USER", "FAGRON_DB_PASSWORD", "FAGRON_DB_CHARSET"],
+      "usado_por": ["propharma-crm", "jarvis-pharmes", "pharmes-recorrencia", "analises em geral"]
+    },
+    {
+      "id": "firebird-producao",
+      "nome": "Firebird Producao (Formula Certa)",
+      "descricao": "Banco DE PRODUCAO do ERP, porta 3050, credencial INT_LOGIPRIX. So o fagron-ingest usa. Evitar consultas diretas aqui - preferir o espelho.",
+      "arquivo": "~/.secrets/conectores/firebird.env",
+      "variaveis": ["FAGRON_DB_HOST_WAN", "FAGRON_DB_PORT", "FAGRON_DB_PATH", "FAGRON_DB_USER", "FAGRON_DB_PASSWORD", "FAGRON_DB_CHARSET", "FAGRON_WHERE"],
+      "usado_por": ["fagron-ingest"]
+    },
+    {
+      "id": "supabase-ecommerce",
+      "nome": "Supabase do E-commerce (leitura)",
+      "descricao": "Acesso somente-leitura (usuario jarvis_ro) ao banco Postgres do site pharmes.com.br. Bom para analises de vendas, clientes e produtos.",
+      "arquivo": "~/.secrets/conectores/supabase-ecommerce.env",
+      "variaveis": ["SUPABASE_ECOM_HOST", "SUPABASE_ECOM_PORT", "SUPABASE_ECOM_DB", "SUPABASE_ECOM_USER", "SUPABASE_ECOM_PASSWORD", "SUPABASE_ECOM_REF", "SUPABASE_ECOM_URL"],
+      "usado_por": ["jarvis-pharmes", "analises em geral"]
+    },
+    {
+      "id": "supabase-conta",
+      "nome": "Supabase - token da conta",
+      "descricao": "Token de acesso da conta Supabase para gerenciar projetos via CLI (npx supabase). Nao e um banco especifico.",
+      "arquivo": "~/.secrets/conectores/supabase.env",
+      "variaveis": ["SUPABASE_ACCESS_TOKEN"],
+      "usado_por": ["qualquer projeto, via CLI"]
+    },
+    {
+      "id": "evolution",
+      "nome": "Evolution API (WhatsApp)",
+      "descricao": "WhatsApp de PRODUCAO da Pharmes - roda nesta propria VPS (stack n8n_evo, nao mexer nos containers). Envia mensagens e relatorios.",
+      "arquivo": "~/.secrets/conectores/evolution.env",
+      "variaveis": ["SERVER_URL", "AUTHENTICATION_API_KEY"],
+      "usado_por": ["bright-data-peek", "propharma-crm", "pharmes-recorrencia"]
+    },
+    {
+      "id": "chat2desk",
+      "nome": "Chat2Desk (atendimento)",
+      "descricao": "Plataforma de atendimento (chat/WhatsApp) usada pelo SAC. Este env tem a URL do backend e o token do webhook.",
+      "arquivo": "~/.secrets/conectores/chat2desk.env",
+      "variaveis": ["NEXT_PUBLIC_BACKEND_URL", "WEBHOOK_VERIFY_TOKEN"],
+      "usado_por": ["ecomercepharmes", "ligacaochat2desk", "pharmes-ia"]
+    }
+  ],
+  "nota_projetos": "Alem dos conectores compartilhados acima, cada projeto tem seu proprio .env em ~/.secrets/projetos/<nome>/ (ja copiado para dentro do repo clonado em ~/dev e protegido por .git/info/exclude)."
+}
