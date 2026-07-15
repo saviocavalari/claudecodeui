@@ -92,6 +92,8 @@ function Sidebar({
     startEditing,
     cancelEditing,
     saveProjectName,
+    saveProjectEmoji,
+    saveProjectFolder,
     showDeleteSessionConfirmation,
     confirmDeleteSession,
     requestProjectDelete,
@@ -166,6 +168,7 @@ function Sidebar({
     activeSessions,
     attentionSessionIds,
     forceExpanded: searchMode === 'running',
+    searchActive: searchFilter.trim().length > 0,
     isProjectStarred,
     onEditingNameChange: setEditingName,
     onToggleProject: toggleProject,
@@ -175,6 +178,12 @@ function Sidebar({
     onCancelEditingProject: cancelEditing,
     onSaveProjectName: (projectName) => {
       void saveProjectName(projectName);
+    },
+    onSaveProjectEmoji: (projectId: string, emoji: string | null) => {
+      void saveProjectEmoji(projectId, emoji);
+    },
+    onSaveProjectFolder: (projectId: string, folder: string | null) => {
+      void saveProjectFolder(projectId, folder);
     },
     onDeleteProject: requestProjectDelete,
     onSessionSelect: handleSessionClick,

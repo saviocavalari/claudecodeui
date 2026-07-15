@@ -29,6 +29,8 @@ type ProjectApiView = {
   customName: string | null;
   isArchived: boolean;
   isStarred: boolean;
+  emoji: string | null;
+  folder: string | null;
   sessions: [];
   sessionMeta: {
     hasMore: false;
@@ -77,6 +79,8 @@ function mapProjectRowToApiView(projectRow: ProjectRepositoryRow): ProjectApiVie
     customName: projectRow.custom_project_name,
     isArchived: Boolean(projectRow.isArchived),
     isStarred: Boolean(projectRow.isStarred),
+    emoji: projectRow.emoji ?? null,
+    folder: projectRow.folder ?? null,
     sessions: [],
     sessionMeta: {
       hasMore: false,
@@ -141,4 +145,39 @@ export async function createProject(
 export function updateProjectDisplayName(projectId: string, newDisplayName: unknown): void {
   const trimmed = typeof newDisplayName === 'string' ? newDisplayName.trim() : '';
   projectsDb.updateCustomProjectNameById(projectId, trimmed.length > 0 ? trimmed : null);
+}
+
+const MAX_PROJECT_EMOJI_LENGTH = 16;
+const MAX_PROJECT_FOLDER_LENGTH = 60;
+
+/**
+ * Sets `projects.emoji` for the given `projectId` (or clears it when empty).
+ * The length cap accounts for multi-codepoint emoji (ZWJ sequences, skin tones).
+ */
+export function updateProjectEmoji(projectId: string, newEmoji: unknown): void {
+  const trimmed = typeof newEmoji === 'string' ? newEmoji.trim() : '';
+  if (trimmed.length > MAX_PROJECT_EMOJI_LENGTH) {
+    throw new AppError('emoji is too long', {
+      code: 'PROJECT_EMOJI_TOO_LONG',
+      statusCode: 400,
+    });
+  }
+
+  projectsDb.updateProjectEmojiById(projectId, trimmed.length > 0 ? trimmed : null);
+}
+
+/**
+ * Sets `projects.folder` for the given `projectId` (or clears it when empty).
+ * Folders are plain labels; the sidebar groups projects that share one.
+ */
+export function updateProjectFolder(projectId: string, newFolder: unknown): void {
+  const trimmed = typeof newFolder === 'string' ? newFolder.trim() : '';
+  if (trimmed.length > MAX_PROJECT_FOLDER_LENGTH) {
+    throw new AppError('folder name is too long', {
+      code: 'PROJECT_FOLDER_TOO_LONG',
+      statusCode: 400,
+    });
+  }
+
+  projectsDb.updateProjectFolderById(projectId, trimmed.length > 0 ? trimmed : null);
 }

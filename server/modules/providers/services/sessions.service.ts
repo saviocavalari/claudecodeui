@@ -19,6 +19,53 @@ type CreateAppSessionResult = {
   projectPath: string;
 };
 
+/**
+ * Upper bound for the carried-over transcript injected into the first prompt
+ * of a provider-switched session. Older messages are dropped first so the
+ * most recent exchange always survives the cut.
+ */
+const MAX_CARRY_OVER_TRANSCRIPT_CHARS = 24_000;
+
+/**
+ * Serializes the displayable part of a conversation (user/assistant text)
+ * into a plain-text transcript that any provider can consume as context.
+ * Tool calls, thinking and stream bookkeeping events are skipped on purpose.
+ */
+function buildCarryOverTranscript(messages: NormalizedMessage[]): string | null {
+  const lines: string[] = [];
+
+  for (const message of messages) {
+    if (message.kind !== 'text') {
+      continue;
+    }
+
+    const content = typeof message.content === 'string' ? message.content.trim() : '';
+    if (!content || (message.role !== 'user' && message.role !== 'assistant')) {
+      continue;
+    }
+
+    lines.push(`${message.role === 'user' ? 'User' : 'Assistant'}: ${content}`);
+  }
+
+  if (lines.length === 0) {
+    return null;
+  }
+
+  let transcript = lines.join('\n\n');
+  if (transcript.length > MAX_CARRY_OVER_TRANSCRIPT_CHARS) {
+    transcript = `[...older messages omitted...]\n\n${transcript.slice(-MAX_CARRY_OVER_TRANSCRIPT_CHARS)}`;
+  }
+
+  return [
+    '[Conversation carried over from another AI assistant]',
+    'The user was previously talking to a different AI assistant and chose to continue this conversation with you. The transcript so far is below. Continue naturally from where it left off, replying in the same language the user has been writing in. Do not re-introduce yourself and do not summarize the transcript back to the user.',
+    '',
+    '--- transcript start ---',
+    transcript,
+    '--- transcript end ---',
+  ].join('\n');
+}
+
 type ArchivedSessionListItem = {
   sessionId: string;
   provider: LLMProvider;
@@ -187,6 +234,44 @@ export const sessionsService = {
         sessionId,
       })),
     };
+  },
+
+  /**
+   * Continues one conversation on a different provider.
+   *
+   * Provider-native transcripts and resume ids are not portable, so this
+   * creates a sibling app session bound to the new provider and stores the
+   * serialized conversation as `pending_context`; the chat gateway prepends
+   * it to the first prompt sent on the new session.
+   */
+  async switchProvider(sessionId: string, newProvider: LLMProvider): Promise<CreateAppSessionResult> {
+    const session = sessionsDb.getSessionById(sessionId);
+    if (!session) {
+      throw new AppError(`Session "${sessionId}" was not found.`, {
+        code: 'SESSION_NOT_FOUND',
+        statusCode: 404,
+      });
+    }
+
+    if (session.provider === newProvider) {
+      throw new AppError('Session already uses this provider.', {
+        code: 'SESSION_PROVIDER_UNCHANGED',
+        statusCode: 400,
+      });
+    }
+
+    // Validates the target provider id before any row is written.
+    providerRegistry.resolveProvider(newProvider);
+
+    const history = await this.fetchHistory(sessionId);
+    const transcript = buildCarryOverTranscript(history.messages);
+
+    const created = this.createAppSession(newProvider, session.project_path ?? '');
+    if (transcript) {
+      sessionsDb.setPendingContext(created.sessionId, transcript);
+    }
+
+    return created;
   },
 
   /**

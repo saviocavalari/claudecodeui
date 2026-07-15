@@ -1,4 +1,5 @@
-import { Check, ChevronDown, ChevronRight, Edit3, Star, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { Check, ChevronDown, ChevronRight, Edit3, FolderInput, SmilePlus, Star, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Button } from '../../../../shared/view/ui';
@@ -10,6 +11,8 @@ import { getTaskIndicatorStatus } from '../../utils/utils';
 
 import TaskIndicator from './TaskIndicator';
 import SidebarProjectSessions from './SidebarProjectSessions';
+import ProjectEmojiModal from './ProjectEmojiModal';
+import ProjectFolderModal from './ProjectFolderModal';
 
 type SidebarProjectItemProps = {
   project: Project;
@@ -35,6 +38,9 @@ type SidebarProjectItemProps = {
   onStartEditingProject: (project: Project) => void;
   onCancelEditingProject: () => void;
   onSaveProjectName: (projectName: string) => void;
+  onSaveProjectEmoji: (projectId: string, emoji: string | null) => void;
+  onSaveProjectFolder: (projectId: string, folder: string | null) => void;
+  existingFolders: string[];
   onDeleteProject: (project: Project) => void;
   onSessionSelect: (session: SessionWithProvider, projectName: string) => void;
   onDeleteSession: (
@@ -83,6 +89,9 @@ export default function SidebarProjectItem({
   onStartEditingProject,
   onCancelEditingProject,
   onSaveProjectName,
+  onSaveProjectEmoji,
+  onSaveProjectFolder,
+  existingFolders,
   onDeleteProject,
   onSessionSelect,
   onDeleteSession,
@@ -100,6 +109,10 @@ export default function SidebarProjectItem({
   // after the projectName → projectId migration.
   const isSelected = selectedProject?.projectId === project.projectId;
   const isEditing = editingProject === project.projectId;
+  const [showEmojiModal, setShowEmojiModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const projectEmoji = typeof project.emoji === 'string' && project.emoji.length > 0 ? project.emoji : null;
+  const projectFolder = typeof project.folder === 'string' && project.folder.length > 0 ? project.folder : null;
   const totalSessionCount = Number(project.sessionMeta?.total ?? sessions.length);
   const sessionCountDisplay = getSessionCountDisplay(project, sessions);
   const sessionCountLabel = `${sessionCountDisplay} session${totalSessionCount === 1 ? '' : 's'}`;
@@ -188,7 +201,10 @@ export default function SidebarProjectItem({
                   ) : (
                     <>
                       <div className="flex min-w-0 flex-1 items-center justify-between">
-                        <h3 className="truncate text-sm font-normal text-foreground">{project.displayName}</h3>
+                        <h3 className="truncate text-sm font-normal text-foreground">
+                          {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
+                          {project.displayName}
+                        </h3>
                         {tasksEnabled && (
                           <TaskIndicator
                             status={taskStatus}
@@ -227,6 +243,28 @@ export default function SidebarProjectItem({
                   </>
                 ) : (
                   <>
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowEmojiModal(true);
+                      }}
+                      title={t('tooltips.setEmoji')}
+                    >
+                      <SmilePlus className="h-4 w-4 text-muted-foreground" />
+                    </button>
+
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setShowFolderModal(true);
+                      }}
+                      title={t('tooltips.setFolder')}
+                    >
+                      <FolderInput className="h-4 w-4 text-muted-foreground" />
+                    </button>
+
                     <button
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-500/10 active:scale-90 dark:border-red-800 dark:bg-red-900/30"
                       onClick={(event) => {
@@ -321,6 +359,7 @@ export default function SidebarProjectItem({
               ) : (
                 <div>
                   <div className="truncate text-sm font-normal text-foreground" title={project.displayName}>
+                    {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
                     {project.displayName}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -361,6 +400,26 @@ export default function SidebarProjectItem({
               </>
             ) : (
               <>
+                <div
+                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowEmojiModal(true);
+                  }}
+                  title={t('tooltips.setEmoji')}
+                >
+                  <SmilePlus className="h-3 w-3" />
+                </div>
+                <div
+                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowFolderModal(true);
+                  }}
+                  title={t('tooltips.setFolder')}
+                >
+                  <FolderInput className="h-3 w-3" />
+                </div>
                 <div
                   className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
                   onClick={(event) => {
@@ -416,6 +475,27 @@ export default function SidebarProjectItem({
         onNewSession={onNewSession}
         t={t}
       />
+
+      {showEmojiModal && (
+        <ProjectEmojiModal
+          projectDisplayName={project.displayName}
+          currentEmoji={projectEmoji}
+          onClose={() => setShowEmojiModal(false)}
+          onSelect={(emoji) => onSaveProjectEmoji(project.projectId, emoji)}
+          t={t}
+        />
+      )}
+
+      {showFolderModal && (
+        <ProjectFolderModal
+          projectDisplayName={project.displayName}
+          currentFolder={projectFolder}
+          existingFolders={existingFolders}
+          onClose={() => setShowFolderModal(false)}
+          onSelect={(folder) => onSaveProjectFolder(project.projectId, folder)}
+          t={t}
+        />
+      )}
     </div>
   );
 }

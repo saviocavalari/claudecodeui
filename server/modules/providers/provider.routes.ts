@@ -540,6 +540,22 @@ router.post(
   }),
 );
 
+/**
+ * Continues one conversation on a different provider: creates a sibling
+ * session bound to the new provider and carries the conversation over as
+ * pending context for its first prompt.
+ */
+router.post(
+  '/sessions/:sessionId/switch-provider',
+  asyncHandler(async (req: Request, res: Response) => {
+    const sessionId = parseSessionId(req.params.sessionId);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const provider = parseProvider(body.provider);
+    const result = await sessionsService.switchProvider(sessionId, provider);
+    res.status(201).json(createApiSuccessResponse(result));
+  }),
+);
+
 router.get(
   '/sessions/running',
   asyncHandler(async (_req: Request, res: Response) => {

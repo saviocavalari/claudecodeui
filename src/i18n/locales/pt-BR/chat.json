@@ -236,5 +236,11 @@
   },
   "tasks": {
     "nextTaskPrompt": "Iniciar a próxima tarefa"
+  },
+  "providerSwitch": {
+    "button": "Trocar de IA",
+    "heading": "Continuar com:",
+    "tooltip": "Continuar esta conversa com outra IA",
+    "error": "Não foi possível trocar de IA. Tente novamente."
   }
 }

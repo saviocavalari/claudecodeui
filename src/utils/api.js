@@ -90,6 +90,16 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ displayName }),
     }),
+  setProjectEmoji: (projectId, emoji) =>
+    authenticatedFetch(`/api/projects/${encodeURIComponent(projectId)}/emoji`, {
+      method: 'PUT',
+      body: JSON.stringify({ emoji }),
+    }),
+  setProjectFolder: (projectId, folder) =>
+    authenticatedFetch(`/api/projects/${encodeURIComponent(projectId)}/folder`, {
+      method: 'PUT',
+      body: JSON.stringify({ folder }),
+    }),
   restoreProject: (projectId) =>
     authenticatedFetch(`/api/projects/${encodeURIComponent(projectId)}/restore`, {
       method: 'POST',
@@ -107,6 +117,14 @@ export const api = {
       method: 'DELETE',
     });
   },
+  // Continue the current conversation on a different AI provider. The backend
+  // creates a sibling session bound to `provider` and carries the transcript
+  // over as context for its first message; returns the new sessionId.
+  switchSessionProvider: (sessionId, provider) =>
+    authenticatedFetch(`/api/providers/sessions/${encodeURIComponent(sessionId)}/switch-provider`, {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }),
   getArchivedSessions: () =>
     authenticatedFetch('/api/providers/sessions/archived'),
   runningSessions: () =>

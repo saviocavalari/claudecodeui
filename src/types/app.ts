@@ -67,6 +67,8 @@ export interface Project {
   fullPath: string;
   path?: string;
   isStarred?: boolean;
+  emoji?: string | null;
+  folder?: string | null;
   sessions?: ProjectSession[];
   sessionMeta?: ProjectSessionMeta;
   taskmaster?: ProjectTaskmasterInfo;

@@ -9,13 +9,14 @@ type SessionRow = {
   project_path: string | null;
   jsonl_path: string | null;
   custom_name: string | null;
+  pending_context: string | null;
   isArchived: number;
   created_at: string;
   updated_at: string;
 };
 
 const SESSION_ROW_COLUMNS =
-  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, isArchived, created_at, updated_at';
+  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, pending_context, isArchived, created_at, updated_at';
 
 const SQLITE_UTC_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
@@ -209,6 +210,20 @@ export const sessionsDb = {
     });
 
     merge();
+  },
+
+  /**
+   * Stores conversation context carried over from another provider's session.
+   * The chat gateway prepends it to the first prompt sent on this session and
+   * clears it afterwards.
+   */
+  setPendingContext(sessionId: string, pendingContext: string | null): void {
+    const db = getConnection();
+    db.prepare(
+      `UPDATE sessions
+       SET pending_context = ?
+       WHERE session_id = ?`
+    ).run(pendingContext, sessionId);
   },
 
   updateSessionCustomName(sessionId: string, customName: string): void {

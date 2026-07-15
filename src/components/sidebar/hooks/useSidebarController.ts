@@ -701,6 +701,38 @@ export function useSidebarController({
     [editingName, paletteOps],
   );
 
+  const saveProjectEmoji = useCallback(
+    async (projectId: string, emoji: string | null) => {
+      try {
+        const response = await api.setProjectEmoji(projectId, emoji);
+        if (response.ok) {
+          await paletteOps.refreshProjects();
+        } else {
+          console.error('Failed to set project emoji');
+        }
+      } catch (error) {
+        console.error('Error setting project emoji:', error);
+      }
+    },
+    [paletteOps],
+  );
+
+  const saveProjectFolder = useCallback(
+    async (projectId: string, folder: string | null) => {
+      try {
+        const response = await api.setProjectFolder(projectId, folder);
+        if (response.ok) {
+          await paletteOps.refreshProjects();
+        } else {
+          console.error('Failed to set project folder');
+        }
+      } catch (error) {
+        console.error('Error setting project folder:', error);
+      }
+    },
+    [paletteOps],
+  );
+
   const showDeleteSessionConfirmation = useCallback(
     // Kept with project/provider arguments for component wiring compatibility;
     // deletion now uses only `sessionId` via /api/providers/sessions/:sessionId.
@@ -959,6 +991,8 @@ export function useSidebarController({
     startEditing,
     cancelEditing,
     saveProjectName,
+    saveProjectEmoji,
+    saveProjectFolder,
     showDeleteSessionConfirmation,
     confirmDeleteSession,
     requestProjectDelete,

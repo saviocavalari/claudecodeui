@@ -17,7 +17,14 @@
     "projects": "projetos",
     "noMatchingProjects": "Nenhum projeto correspondente",
     "tryDifferentSearch": "Tente ajustar o termo de busca",
-    "runClaudeCli": "Execute o Claude CLI em um diretório de projeto para começar"
+    "runClaudeCli": "Execute o Claude CLI em um diretório de projeto para começar",
+    "chooseEmoji": "Escolher emoji para",
+    "removeEmoji": "Remover emoji",
+    "emojiCustomPlaceholder": "Ou cole qualquer emoji aqui...",
+    "moveToFolder": "Mover para pasta:",
+    "newFolderPlaceholder": "Nome da nova pasta",
+    "createFolder": "Criar",
+    "removeFromFolder": "Remover da pasta"
   },
   "app": {
     "title": "CloudCLI",
@@ -50,7 +57,9 @@
     "cancel": "Cancelar",
     "clearSearch": "Limpar busca",
     "openCommandPalette": "Abrir paleta de comandos",
-    "attentionRequiredIndicator": "A sessão precisa de atenção"
+    "attentionRequiredIndicator": "A sessão precisa de atenção",
+    "setEmoji": "Escolher emoji do projeto",
+    "setFolder": "Mover projeto para pasta"
   },
   "navigation": {
     "chat": "Conversa",

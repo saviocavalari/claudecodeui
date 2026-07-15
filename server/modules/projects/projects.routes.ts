@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { createProject, updateProjectDisplayName } from '@/modules/projects/services/project-management.service.js';
+import { createProject, updateProjectDisplayName, updateProjectEmoji, updateProjectFolder } from '@/modules/projects/services/project-management.service.js';
 import { startCloneProject } from '@/modules/projects/services/project-clone.service.js';
 import { getProjectTaskMaster } from '@/modules/projects/services/projects-has-taskmaster.service.js';
 import { AppError, asyncHandler, createApiSuccessResponse } from '@/shared/utils.js';
@@ -237,6 +237,26 @@ router.put('/:projectId/rename', (req, res) => {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to rename project' });
   }
 });
+
+router.put(
+  '/:projectId/emoji',
+  asyncHandler(async (req, res) => {
+    const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
+    const { emoji } = req.body as { emoji?: unknown };
+    updateProjectEmoji(projectId, emoji);
+    res.json({ success: true });
+  }),
+);
+
+router.put(
+  '/:projectId/folder',
+  asyncHandler(async (req, res) => {
+    const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
+    const { folder } = req.body as { folder?: unknown };
+    updateProjectFolder(projectId, folder);
+    res.json({ success: true });
+  }),
+);
 
 router.post(
   '/:projectId/toggle-star',

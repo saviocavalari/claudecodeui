@@ -187,7 +187,16 @@ async function handleChatSend(
   }
 
   const clientOptions = (data.options ?? {}) as AnyRecord;
-  const command = typeof data.content === 'string' ? data.content : '';
+  let command = typeof data.content === 'string' ? data.content : '';
+
+  // When a conversation was continued on a different provider, the previous
+  // transcript was stored as `pending_context`. Prepend it to this first
+  // prompt so the new provider picks up where the old one left off, then clear
+  // it so it never leaks into later messages.
+  if (session.pending_context) {
+    command = `${session.pending_context}\n\n--- The user now says: ---\n${command}`;
+    sessionsDb.setPendingContext(sessionId, null);
+  }
 
   // The provider runtimes receive the provider-native session id (that is the
   // id their CLI/SDK understands for resume). Brand-new sessions have no

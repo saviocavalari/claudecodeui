@@ -14,6 +14,7 @@ import { groupConsecutiveTools, isToolGroupItem } from '../../utils/toolGrouping
 
 import MessageComponent from './MessageComponent';
 import ProviderSelectionEmptyState from './ProviderSelectionEmptyState';
+import ProviderSwitcher from './ProviderSwitcher';
 import ToolGroupContainer from './ToolGroupContainer';
 import LoadAllMessagesOverlay from './LoadAllMessagesOverlay';
 
@@ -31,6 +32,7 @@ interface ChatMessagesPaneProps {
   currentSessionId: string | null;
   provider: LLMProvider;
   setProvider: (provider: LLMProvider) => void;
+  onNavigateToSession?: (sessionId: string) => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   claudeModel: string;
   setClaudeModel: (model: string) => void;
@@ -79,6 +81,7 @@ function ChatMessagesPane({
   currentSessionId,
   provider,
   setProvider,
+  onNavigateToSession,
   textareaRef,
   claudeModel,
   setClaudeModel,
@@ -196,6 +199,13 @@ function ChatMessagesPane({
         />
       ) : (
         <>
+          <ProviderSwitcher
+            currentSessionId={currentSessionId || selectedSession?.id || null}
+            provider={provider}
+            setProvider={setProvider}
+            onNavigateToSession={onNavigateToSession}
+          />
+
           {/* Loading indicator for older messages (hide when load-all is active) */}
           {isLoadingMoreMessages && !isLoadingAllMessages && !allMessagesLoaded && (
             <div className="py-3 text-center text-gray-500 dark:text-gray-400">
