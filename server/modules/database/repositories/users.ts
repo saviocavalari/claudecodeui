@@ -151,6 +151,24 @@ export const userDb = {
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   },
 
+  /**
+   * Counts active members that have no project granted yet — i.e. accounts
+   * "waiting for release" that the admin still needs to act on.
+   */
+  countPendingMembers(): number {
+    const db = getConnection();
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) as count
+         FROM users
+         WHERE role = 'member'
+           AND is_active = 1
+           AND id NOT IN (SELECT user_id FROM user_projects)`
+      )
+      .get() as { count: number };
+    return row.count;
+  },
+
   /** Counts how many admins currently exist (used to prevent lockout). */
   countAdmins(): number {
     const db = getConnection();

@@ -6,7 +6,7 @@ import pty, { type IPty } from 'node-pty';
 import { WebSocket, type RawData } from 'ws';
 
 import { parseIncomingJsonObject } from '@/shared/utils.js';
-import { userIdCanAccessProjectPath } from '@/modules/database/index.js';
+import { userIdCanAccessProjectPath, activityLogDb } from '@/modules/database/index.js';
 
 type ShellIncomingMessage = {
   type?: string;
@@ -257,6 +257,12 @@ export function handleShellConnection(
           );
           return;
         }
+
+        activityLogDb.record({
+          userId,
+          action: 'open_terminal',
+          projectName: path.basename(projectPath),
+        });
 
         const sessionId = readString(data.sessionId) || null;
         const hasSession = readBoolean(data.hasSession);

@@ -5,6 +5,7 @@ import {
   LAST_SCANNED_AT_SQL,
   NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL,
   PROJECTS_TABLE_SCHEMA_SQL,
+  ACTIVITY_LOG_TABLE_SCHEMA_SQL,
   PUSH_SUBSCRIPTIONS_TABLE_SCHEMA_SQL,
   SESSIONS_TABLE_SCHEMA_SQL,
   USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL,
@@ -479,6 +480,10 @@ export const runMigrations = (db: Database) => {
     db.exec(USER_PROJECTS_TABLE_SCHEMA_SQL);
     db.exec('CREATE INDEX IF NOT EXISTS idx_user_projects_user ON user_projects(user_id)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_user_projects_project ON user_projects(project_id)');
+
+    // Audit trail for multi-user installs (who did what, when).
+    db.exec(ACTIVITY_LOG_TABLE_SCHEMA_SQL);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)');
 
     // Promote the original (single) account to admin when upgrading an existing
     // install: if nobody is an admin yet, the earliest-created user becomes one.

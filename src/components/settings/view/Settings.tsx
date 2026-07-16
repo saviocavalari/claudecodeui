@@ -16,6 +16,7 @@ import TasksSettingsTab from '../view/tabs/tasks-settings/TasksSettingsTab';
 import PluginSettingsTab from '../../plugins/view/PluginSettingsTab';
 import AboutTab from '../view/tabs/AboutTab';
 import UsersAdminTab from '../view/tabs/UsersAdminTab';
+import ActivityAdminTab from '../view/tabs/ActivityAdminTab';
 import { useAuth } from '../../auth/context/AuthContext';
 import { useSettingsController } from '../hooks/useSettingsController';
 import { useWebPush } from '../../../hooks/useWebPush';
@@ -222,6 +223,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
               {activeTab === 'about' && <AboutTab />}
 
               {activeTab === 'users' && isAdmin && <UsersAdminTab />}
+
+              {activeTab === 'activity' && isAdmin && <ActivityAdminTab />}
             </div>
           </main>
         </div>

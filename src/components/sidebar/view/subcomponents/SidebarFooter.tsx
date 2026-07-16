@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Settings, ArrowUpCircle, Bug, AlertTriangle } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { IS_PLATFORM } from '../../../../constants/config';
+import { useAuth } from '../../../auth/context/AuthContext';
+import { api } from '../../../../utils/api';
 import type { ReleaseInfo } from '../../../../types/sharedTypes';
 
 const GITHUB_ISSUES_URL = 'https://github.com/siteboon/claudecodeui/issues/new';
@@ -37,6 +40,48 @@ export default function SidebarFooter({
   onShowSettings,
   t,
 }: SidebarFooterProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Poll how many members are waiting for a project so the admin sees new
+  // signups without opening the Users panel. Admin-only; light polling.
+  useEffect(() => {
+    if (!isAdmin) {
+      setPendingCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    const fetchPending = async () => {
+      try {
+        const res = await api.admin.pendingCount();
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setPendingCount(Number(data.pending) || 0);
+      } catch {
+        // Non-fatal: badge just stays as-is on transient errors.
+      }
+    };
+
+    void fetchPending();
+    const interval = window.setInterval(fetchPending, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [isAdmin]);
+
+  const pendingBadge = (extraClass = '') =>
+    isAdmin && pendingCount > 0 ? (
+      <span
+        className={`ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white ${extraClass}`}
+        title={`${pendingCount} usuário(s) aguardando liberação`}
+      >
+        {pendingCount}
+      </span>
+    ) : null;
+
   return (
     <div className="flex-shrink-0" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
       {/* Restart-required banner: the running server version differs from the
@@ -140,6 +185,7 @@ export default function SidebarFooter({
         >
           <Settings className="h-3.5 w-3.5" />
           <span className="text-sm">{t('actions.settings')}</span>
+          {pendingBadge()}
         </button>
       </div>
 
@@ -197,6 +243,7 @@ export default function SidebarFooter({
             <Settings className="h-4 w-4 text-muted-foreground" />
           </div>
           <span className="text-sm font-normal text-foreground">{t('actions.settings')}</span>
+          {pendingBadge()}
         </button>
       </div>
     </div>

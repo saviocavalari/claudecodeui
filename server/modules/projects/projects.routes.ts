@@ -7,7 +7,8 @@ import { AppError, asyncHandler, createApiSuccessResponse } from '@/shared/utils
 import { getArchivedProjectsWithSessions, getProjectSessionsPage, getProjectsWithSessions } from '@/modules/projects/services/projects-with-sessions-fetch.service.js';
 import { deleteOrArchiveProject, restoreArchivedProject } from '@/modules/projects/services/project-delete.service.js';
 import { applyLegacyStarredProjectIds, toggleProjectStar } from '@/modules/projects/services/project-star.service.js';
-import { projectAccessDb } from '@/modules/database/index.js';
+import { projectAccessDb, activityLogDb, projectsDb } from '@/modules/database/index.js';
+import path from 'node:path';
 
 const router = express.Router();
 
@@ -22,6 +23,18 @@ function getRequestUser(req: express.Request): AuthenticatedUser | undefined {
 
 function requestUserIsAdmin(req: express.Request): boolean {
   return getRequestUser(req)?.role === 'admin';
+}
+
+// Project mutations (rename, delete, emoji, folder, star, restore) are owner
+// concerns: even a member granted access to a project must not reshape or
+// remove it. Throws 403 for non-admins.
+function assertAdmin(req: express.Request): void {
+  if (!requestUserIsAdmin(req)) {
+    throw new AppError('Only an admin can change projects.', {
+      code: 'ADMIN_REQUIRED',
+      statusCode: 403,
+    });
+  }
 }
 
 // Multi-user guard: any route that targets a specific project by id is gated
@@ -273,6 +286,10 @@ router.get(
 
 router.put('/:projectId/rename', (req, res) => {
   try {
+    if (!requestUserIsAdmin(req)) {
+      res.status(403).json({ error: 'Only an admin can change projects.' });
+      return;
+    }
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     const { displayName } = req.body as { displayName?: unknown };
     updateProjectDisplayName(projectId, displayName);
@@ -285,6 +302,7 @@ router.put('/:projectId/rename', (req, res) => {
 router.put(
   '/:projectId/emoji',
   asyncHandler(async (req, res) => {
+    assertAdmin(req);
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     const { emoji } = req.body as { emoji?: unknown };
     updateProjectEmoji(projectId, emoji);
@@ -295,6 +313,7 @@ router.put(
 router.put(
   '/:projectId/folder',
   asyncHandler(async (req, res) => {
+    assertAdmin(req);
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     const { folder } = req.body as { folder?: unknown };
     updateProjectFolder(projectId, folder);
@@ -305,6 +324,7 @@ router.put(
 router.post(
   '/:projectId/toggle-star',
   asyncHandler(async (req, res) => {
+    assertAdmin(req);
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     const { isStarred } = toggleProjectStar(projectId);
     res.json({ success: true, isStarred });
@@ -314,6 +334,7 @@ router.post(
 router.post(
   '/:projectId/restore',
   asyncHandler(async (req, res) => {
+    assertAdmin(req);
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     restoreArchivedProject(projectId);
     res.json(createApiSuccessResponse({ projectId, isArchived: false }));
@@ -327,9 +348,21 @@ router.post(
 router.delete(
   '/:projectId',
   asyncHandler(async (req, res) => {
+    assertAdmin(req);
     const projectId = typeof req.params.projectId === 'string' ? req.params.projectId : '';
     const force = req.query.force === 'true';
+    const projectPath = projectsDb.getProjectPathById(projectId);
     await deleteOrArchiveProject(projectId, force);
+    const admin = getRequestUser(req);
+    activityLogDb.record({
+      userId: admin?.id,
+      username: typeof (admin as { username?: string })?.username === 'string'
+        ? (admin as { username?: string }).username
+        : null,
+      action: force ? 'delete_project' : 'archive_project',
+      projectId,
+      projectName: projectPath ? path.basename(projectPath) : null,
+    });
     res.json({ success: true });
   }),
 );

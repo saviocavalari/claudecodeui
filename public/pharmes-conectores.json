@@ -1,5 +1,5 @@
 {
-  "atualizado_em": "2026-07-14",
+  "atualizado_em": "2026-07-15",
   "observacao": "Este painel mostra apenas nomes e descricoes. As credenciais em si ficam em ~/.secrets (fora do git) e nunca aparecem aqui.",
   "conectores": [
     {
@@ -49,6 +49,14 @@
       "arquivo": "~/.secrets/conectores/chat2desk.env",
       "variaveis": ["NEXT_PUBLIC_BACKEND_URL", "WEBHOOK_VERIFY_TOKEN"],
       "usado_por": ["ecomercepharmes", "ligacaochat2desk", "pharmes-ia"]
+    },
+    {
+      "id": "amazon-ses",
+      "nome": "Amazon SES (email transacional)",
+      "descricao": "Provedor unico de email transacional do e-commerce (via API v2 do SES com assinatura SigV4). Envia confirmacoes de pedido, recuperacao de senha e afins. Remetente padrao noreply@pharmes.com.br. IMPORTANTE: as credenciais reais vivem nos secrets das Edge Functions do Supabase - este env local pode nao estar preenchido (o Supabase nao deixa ler o valor de um secret de volta).",
+      "arquivo": "~/.secrets/conectores/amazon-ses.env",
+      "variaveis": ["SES_REGION", "SES_ACCESS_KEY_ID", "SES_SECRET_ACCESS_KEY", "SES_FROM_EMAIL"],
+      "usado_por": ["ecomercepharmes"]
     }
   ],
   "nota_projetos": "Alem dos conectores compartilhados acima, cada projeto tem seu proprio .env em ~/.secrets/projetos/<nome>/ (ja copiado para dentro do repo clonado em ~/dev e protegido por .git/info/exclude)."

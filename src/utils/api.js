@@ -64,6 +64,8 @@ export const api = {
   admin: {
     users: () => authenticatedFetch('/api/admin/users'),
     projects: () => authenticatedFetch('/api/admin/projects'),
+    pendingCount: () => authenticatedFetch('/api/admin/pending-count'),
+    activity: (limit = 100) => authenticatedFetch(`/api/admin/activity?limit=${limit}`),
     setUserActive: (userId, isActive) =>
       authenticatedFetch(`/api/admin/users/${userId}/active`, {
         method: 'POST',

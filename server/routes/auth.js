@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import { userDb } from '../modules/database/index.js';
+import { userDb, activityLogDb } from '../modules/database/index.js';
 import { getConnection } from '../modules/database/connection.js';
 import { generateToken, authenticateToken } from '../middleware/auth.js';
 
@@ -58,6 +58,12 @@ router.post('/register', async (req, res) => {
 
       // Update last login (non-fatal, outside transaction)
       userDb.updateLastLogin(user.id);
+      activityLogDb.record({
+        userId: user.id,
+        username: user.username,
+        action: 'register',
+        detail: role === 'admin' ? 'primeiro usuário (admin)' : 'aguardando liberação',
+      });
 
       res.json({
         success: true,
@@ -106,7 +112,8 @@ router.post('/login', async (req, res) => {
     
     // Update last login
     userDb.updateLastLogin(user.id);
-    
+    activityLogDb.record({ userId: user.id, username: user.username, action: 'login' });
+
     res.json({
       success: true,
       user: { id: user.id, username: user.username, role: user.role },

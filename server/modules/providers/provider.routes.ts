@@ -7,7 +7,8 @@ import { providerModelsService } from '@/modules/providers/services/provider-mod
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
-import { projectAccessDb, projectsDb } from '@/modules/database/index.js';
+import { projectAccessDb, projectsDb, activityLogDb } from '@/modules/database/index.js';
+import path from 'node:path';
 import type {
   LLMProvider,
   McpScope,
@@ -540,7 +541,7 @@ router.post(
     // Multi-user guard: a member may only open a session (which is what lets the
     // AI run in a working directory) inside a project they were granted. This is
     // the primary gate for "can this person use my AI on that folder".
-    const user = (req as Request & { user?: { id?: number | string; role?: string } }).user;
+    const user = (req as Request & { user?: { id?: number | string; role?: string; username?: string } }).user;
     if (user?.role !== 'admin') {
       const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
       const project = projectsDb.getProjectPath(projectPath);
@@ -555,6 +556,15 @@ router.post(
     }
 
     const result = sessionsService.createAppSession(provider, projectPath);
+
+    activityLogDb.record({
+      userId: user?.id,
+      username: typeof user?.username === 'string' ? user.username : null,
+      action: 'open_ai',
+      projectName: projectPath ? path.basename(projectPath) : null,
+      detail: `provider: ${provider}`,
+    });
+
     res.status(201).json(createApiSuccessResponse(result));
   }),
 );

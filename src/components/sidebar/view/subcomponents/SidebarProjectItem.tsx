@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 
 import { Button } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
+import { useAuth } from '../../../auth/context/AuthContext';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
 import type { SessionActivityMap } from '../../../../hooks/useSessionProtection';
 import type { MCPServerStatus, SessionWithProvider } from '../../types/types';
@@ -109,6 +110,10 @@ export default function SidebarProjectItem({
   // after the projectName → projectId migration.
   const isSelected = selectedProject?.projectId === project.projectId;
   const isEditing = editingProject === project.projectId;
+  // Project management (rename/delete/emoji/folder/star) is admin-only; members
+  // only open and use the projects granted to them.
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [showEmojiModal, setShowEmojiModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const projectEmoji = typeof project.emoji === 'string' && project.emoji.length > 0 ? project.emoji : null;
@@ -151,16 +156,23 @@ export default function SidebarProjectItem({
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <button
                   className={cn(
-                    'w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-all duration-150 border',
+                    'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 border',
+                    isAdmin && 'active:scale-90',
                     isStarred
                       ? 'bg-yellow-500/10 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800'
                       : 'bg-gray-500/10 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800',
                   )}
                   onClick={(event) => {
                     event.stopPropagation();
-                    toggleStarProject();
+                    if (isAdmin) toggleStarProject();
                   }}
-                  title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
+                  title={
+                    isAdmin
+                      ? isStarred
+                        ? t('tooltips.removeFromFavorites')
+                        : t('tooltips.addToFavorites')
+                      : undefined
+                  }
                 >
                   <Star
                     className={cn(
@@ -243,47 +255,51 @@ export default function SidebarProjectItem({
                   </>
                 ) : (
                   <>
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setShowEmojiModal(true);
-                      }}
-                      title={t('tooltips.setEmoji')}
-                    >
-                      <SmilePlus className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setShowEmojiModal(true);
+                          }}
+                          title={t('tooltips.setEmoji')}
+                        >
+                          <SmilePlus className="h-4 w-4 text-muted-foreground" />
+                        </button>
 
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setShowFolderModal(true);
-                      }}
-                      title={t('tooltips.setFolder')}
-                    >
-                      <FolderInput className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setShowFolderModal(true);
+                          }}
+                          title={t('tooltips.setFolder')}
+                        >
+                          <FolderInput className="h-4 w-4 text-muted-foreground" />
+                        </button>
 
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-500/10 active:scale-90 dark:border-red-800 dark:bg-red-900/30"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDeleteProject(project);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
-                    </button>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-500/10 active:scale-90 dark:border-red-800 dark:bg-red-900/30"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteProject(project);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        </button>
 
-                    <button
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 active:scale-90 dark:border-primary/30 dark:bg-primary/20"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onStartEditingProject(project);
-                      }}
-                    >
-                      <Edit3 className="h-4 w-4 text-primary" />
-                    </button>
+                        <button
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 active:scale-90 dark:border-primary/30 dark:bg-primary/20"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onStartEditingProject(project);
+                          }}
+                        >
+                          <Edit3 className="h-4 w-4 text-primary" />
+                        </button>
+                      </>
+                    )}
 
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/30">
                       {isExpanded ? (
@@ -316,16 +332,23 @@ export default function SidebarProjectItem({
           <div className="flex w-full items-center gap-3">
             <div
               className={cn(
-                'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded cursor-pointer transition-all duration-200',
+                'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded transition-all duration-200',
+                isAdmin && 'cursor-pointer',
                 isStarred
-                  ? 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                  : 'opacity-40 hover:opacity-100 hover:bg-accent',
+                  ? isAdmin && 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                  : cn('opacity-40', isAdmin && 'hover:opacity-100 hover:bg-accent'),
               )}
               onClick={(event) => {
                 event.stopPropagation();
-                toggleStarProject();
+                if (isAdmin) toggleStarProject();
               }}
-              title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
+              title={
+                isAdmin
+                  ? isStarred
+                    ? t('tooltips.removeFromFavorites')
+                    : t('tooltips.addToFavorites')
+                  : undefined
+              }
             >
               <Star
                 className={cn(
@@ -416,7 +439,7 @@ export default function SidebarProjectItem({
               )}
             </div>
 
-            {!isEditing && (
+            {!isEditing && isAdmin && (
               <div className="flex flex-shrink-0 items-center gap-1">
                 <div
                   className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"

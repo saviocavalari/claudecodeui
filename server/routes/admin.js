@@ -9,7 +9,7 @@
 import express from 'express';
 import path from 'node:path';
 
-import { userDb, projectAccessDb, projectsDb } from '../modules/database/index.js';
+import { userDb, projectAccessDb, projectsDb, activityLogDb } from '../modules/database/index.js';
 
 const router = express.Router();
 
@@ -34,6 +34,28 @@ router.get('/users', (req, res) => {
   } catch (error) {
     console.error('[admin] list users error:', error);
     res.status(500).json({ error: 'Failed to list users' });
+  }
+});
+
+// How many active members are still waiting for a project to be granted.
+// Used to badge the settings icon so the admin notices new signups.
+router.get('/pending-count', (req, res) => {
+  try {
+    res.json({ pending: userDb.countPendingMembers() });
+  } catch (error) {
+    console.error('[admin] pending count error:', error);
+    res.status(500).json({ error: 'Failed to count pending users' });
+  }
+});
+
+// Recent activity (who did what, when) for the audit panel.
+router.get('/activity', (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 100;
+    res.json({ activity: activityLogDb.list(limit) });
+  } catch (error) {
+    console.error('[admin] activity error:', error);
+    res.status(500).json({ error: 'Failed to load activity' });
   }
 });
 

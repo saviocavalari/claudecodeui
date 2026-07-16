@@ -117,6 +117,25 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 `;
 
+/**
+ * Lightweight audit trail for multi-user installs: who did what, when, and in
+ * which project. `username` is snapshotted at write time so entries survive a
+ * user being renamed or deleted. Not tied to projects/users by foreign key so
+ * history is retained even after those rows are removed.
+ */
+export const ACTIVITY_LOG_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    username TEXT,
+    action TEXT NOT NULL,
+    project_id TEXT,
+    project_name TEXT,
+    detail TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`;
+
 export const SESSIONS_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT NOT NULL,
@@ -196,6 +215,9 @@ ${PROJECTS_TABLE_SCHEMA_SQL}
 ${USER_PROJECTS_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_user_projects_user ON user_projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_projects_project ON user_projects(project_id);
+
+${ACTIVITY_LOG_TABLE_SCHEMA_SQL}
+CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at);
 
 ${SESSIONS_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id);
