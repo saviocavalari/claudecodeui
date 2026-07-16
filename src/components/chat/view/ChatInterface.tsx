@@ -330,7 +330,6 @@ function ChatInterface({
           currentSessionId={currentSessionId}
           provider={provider}
           setProvider={(nextProvider) => setProvider(nextProvider as Provider)}
-          onNavigateToSession={onNavigateToSession}
           textareaRef={textareaRef}
           claudeModel={claudeModel}
           setClaudeModel={setClaudeModel}
@@ -383,6 +382,10 @@ function ChatInterface({
           )}
 
           <ChatComposer
+          currentSessionId={currentSessionId || selectedSession?.id || null}
+          provider={provider}
+          setProvider={(nextProvider) => setProvider(nextProvider as Provider)}
+          onNavigateToSession={onNavigateToSession}
           pendingPermissionRequests={pendingPermissionRequests}
           handlePermissionDecision={handlePermissionDecision}
           handleGrantToolPermission={handleGrantToolPermission}

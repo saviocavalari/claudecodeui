@@ -18,7 +18,7 @@ import { useVoiceAvailable } from '../../hooks/useVoiceAvailable';
 import type { QueuedDraft } from '../../hooks/useChatComposerState';
 import type { SessionActivity } from '../../../../hooks/useSessionProtection';
 import type { PendingPermissionRequest, PermissionMode } from '../../types/types';
-import type { ProviderModelOption } from '../../../../types/app';
+import type { LLMProvider, ProviderModelOption } from '../../../../types/app';
 import {
   PromptInput,
   PromptInputHeader,
@@ -35,6 +35,7 @@ import ActivityIndicator from './ActivityIndicator';
 import ImageAttachment from './ImageAttachment';
 import VoiceInputButton from './VoiceInputButton';
 import PermissionRequestsBanner from './PermissionRequestsBanner';
+import ProviderSwitcher from './ProviderSwitcher';
 import TokenUsageSummary from './TokenUsageSummary';
 import QueuedMessageCard from './QueuedMessageCard';
 
@@ -54,6 +55,10 @@ interface SlashCommand {
 }
 
 interface ChatComposerProps {
+  currentSessionId: string | null;
+  provider: LLMProvider;
+  setProvider: (provider: LLMProvider) => void;
+  onNavigateToSession?: (sessionId: string) => void;
   pendingPermissionRequests: PendingPermissionRequest[];
   handlePermissionDecision: (
     requestIds: string | string[],
@@ -115,6 +120,10 @@ interface ChatComposerProps {
 }
 
 export default function ChatComposer({
+  currentSessionId,
+  provider,
+  setProvider,
+  onNavigateToSession,
   pendingPermissionRequests,
   handlePermissionDecision,
   handleGrantToolPermission,
@@ -541,6 +550,13 @@ export default function ChatComposer({
                 )}
               </div>
             )}
+
+            <ProviderSwitcher
+              currentSessionId={currentSessionId}
+              provider={provider}
+              setProvider={setProvider}
+              onNavigateToSession={onNavigateToSession}
+            />
 
             <TokenUsageSummary usage={tokenBudget} onClick={onShowTokenUsage} />
 
