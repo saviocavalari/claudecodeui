@@ -355,6 +355,10 @@ export function handleShellConnection(
         const termCols = readNumber(data.cols, 80);
         const termRows = readNumber(data.rows, 24);
         const prioritizedPath = prioritizeUserNpmGlobalBin(process.env);
+        // The app server runs with NODE_ENV=production, but interactive terminals
+        // operate on arbitrary project directories where that value is wrong
+        // (e.g. it makes `npm install` silently skip devDependencies).
+        const { NODE_ENV: _serverNodeEnv, ...shellEnv } = process.env;
 
         shellProcess = pty.spawn(shell, shellArgs, {
           name: 'xterm-256color',
@@ -362,7 +366,7 @@ export function handleShellConnection(
           rows: termRows,
           cwd: resolvedProjectPath,
           env: {
-            ...process.env,
+            ...shellEnv,
             [prioritizedPath.key]: prioritizedPath.value,
             TERM: 'xterm-256color',
             COLORTERM: 'truecolor',
