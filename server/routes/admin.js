@@ -8,10 +8,28 @@
 
 import express from 'express';
 import path from 'node:path';
+import spawn from 'cross-spawn';
 
 import { userDb, projectAccessDb, projectsDb, activityLogDb } from '../modules/database/index.js';
 
 const router = express.Router();
+
+const CLOUDCLI_SERVICE_NAME = process.env.CLOUDCLI_SYSTEMD_SERVICE || 'claude-chat';
+
+function runSystemctl(args) {
+  return new Promise((resolve) => {
+    const child = spawn('sudo', ['-n', 'systemctl', ...args], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let errorOutput = '';
+    child.stderr.on('data', (chunk) => { errorOutput += chunk.toString(); });
+    child.on('error', (error) => resolve({ ok: false, error: error.message }));
+    child.on('close', (code) => resolve({
+      ok: code === 0,
+      error: errorOutput.trim() || `systemctl exited with code ${code}`,
+    }));
+  });
+}
 
 function projectDisplayName(row) {
   const custom = (row.custom_project_name || '').trim();
@@ -57,6 +75,30 @@ router.get('/activity', (req, res) => {
     console.error('[admin] activity error:', error);
     res.status(500).json({ error: 'Failed to load activity' });
   }
+});
+
+// Restart only the CloudCLI web service. The route is mounted behind the
+// admin guard, verifies non-interactive systemd access first, and returns
+// before the current process is stopped so the browser can enter reconnect mode.
+router.post('/restart', async (req, res) => {
+  const preflight = await runSystemctl(['is-active', '--quiet', CLOUDCLI_SERVICE_NAME]);
+  if (!preflight.ok) {
+    console.error('[admin] restart preflight failed:', preflight.error);
+    return res.status(503).json({
+      error: 'CloudCLI restart is not available in this environment.',
+      detail: preflight.error,
+    });
+  }
+
+  res.status(202).json({ success: true, message: 'CloudCLI is restarting.' });
+  setTimeout(() => {
+    const child = spawn('sudo', ['-n', 'systemctl', 'restart', CLOUDCLI_SERVICE_NAME], {
+      detached: true,
+      stdio: 'ignore',
+    });
+    child.on('error', (error) => console.error('[admin] restart failed:', error.message));
+    child.unref();
+  }, 500);
 });
 
 // List all active projects (for the access checkboxes in the admin UI).

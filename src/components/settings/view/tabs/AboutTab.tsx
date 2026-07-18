@@ -1,9 +1,12 @@
-import { Cloud, ExternalLink, MessageSquare, Star, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Cloud, ExternalLink, Loader2, MessageSquare, RefreshCw, RotateCcw, Star, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '../../../../constants/branding';
 import { IS_PLATFORM } from '../../../../constants/config';
 import { useVersionCheck } from '../../../../hooks/useVersionCheck';
+import { api } from '../../../../utils/api';
+import { useAuth } from '../../../auth/context/AuthContext';
 import PremiumFeatureCard from '../PremiumFeatureCard';
 
 const GITHUB_REPO_URL = 'https://github.com/siteboon/claudecodeui';
@@ -29,8 +32,46 @@ function DiscordIcon({ className }: { className?: string }) {
 
 export default function AboutTab() {
   const { t } = useTranslation('settings');
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
   const { updateAvailable, latestVersion, currentVersion, releaseInfo } = useVersionCheck('siteboon', 'claudecodeui');
   const releasesUrl = releaseInfo?.htmlUrl || `${GITHUB_REPO_URL}/releases`;
+
+  const restartCloudCli = async () => {
+    if (!window.confirm('Reiniciar o CloudCLI agora? As conversas abertas serão reconectadas automaticamente.')) return;
+    setIsRestarting(true);
+    setRestartError(null);
+    try {
+      const response = await api.admin.restart();
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || payload.error || `HTTP ${response.status}`);
+
+      const startedAt = Date.now();
+      const reconnect = async () => {
+        try {
+          const health = await fetch('/health', { cache: 'no-store' });
+          if (health.ok && Date.now() - startedAt > 1500) {
+            window.location.reload();
+            return;
+          }
+        } catch {
+          // Expected while systemd is bringing the service back.
+        }
+        if (Date.now() - startedAt < 60000) {
+          window.setTimeout(reconnect, 1000);
+        } else {
+          setRestartError('O CloudCLI não voltou em 60 segundos. Tente recarregar a página.');
+          setIsRestarting(false);
+        }
+      };
+      window.setTimeout(reconnect, 1500);
+    } catch (error) {
+      setRestartError(error instanceof Error ? error.message : 'Não foi possível reiniciar o CloudCLI.');
+      setIsRestarting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,6 +182,38 @@ export default function AboutTab() {
             Learn more
             <ExternalLink className="h-3 w-3" />
           </a>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="space-y-3 border-t border-border/50 pt-6">
+          <div>
+            <h3 className="text-sm font-medium text-foreground">Controles do sistema</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Recarregue apenas a tela ou reinicie o serviço do CloudCLI sem reiniciar a VPS.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              disabled={isRestarting}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Recarregar interface
+            </button>
+            <button
+              type="button"
+              onClick={() => void restartCloudCli()}
+              disabled={isRestarting}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isRestarting ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              {isRestarting ? 'Reiniciando…' : 'Reiniciar CloudCLI'}
+            </button>
+          </div>
+          {restartError && <p className="text-xs text-destructive">{restartError}</p>}
         </div>
       )}
 

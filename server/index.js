@@ -250,6 +250,68 @@ app.use(express.static(path.join(APP_ROOT, 'dist'), {
 // Frontend now uses window.location for WebSocket URLs
 
 // System update endpoint
+app.get('/api/system/secrets', authenticateToken, async (req, res) => {
+    if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const secretsRoot = path.resolve(process.env.PROJECT_SECRETS_DIR || path.join(os.homedir(), '.secrets', 'projetos'));
+
+    try {
+        if (!fs.existsSync(secretsRoot)) {
+            return res.json({ root: '~/.secrets/projetos', projects: [], totalFiles: 0, totalVariables: 0 });
+        }
+
+        const files = [];
+        const walk = (directory, depth = 0) => {
+            if (depth > 6) return;
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+                const entryPath = path.join(directory, entry.name);
+                if (entry.isSymbolicLink()) continue;
+                if (entry.isDirectory()) {
+                    walk(entryPath, depth + 1);
+                } else if (entry.isFile() && (entry.name.startsWith('.env') || entry.name.endsWith('.env'))) {
+                    files.push(entryPath);
+                }
+            }
+        };
+        walk(secretsRoot);
+
+        const projects = new Map();
+        let totalVariables = 0;
+        for (const filePath of files) {
+            const relativePath = path.relative(secretsRoot, filePath);
+            const segments = relativePath.split(path.sep);
+            const projectName = segments.length > 1 ? segments.slice(0, -1).join(' / ') : segments[0].replace(/^\.env(?:\..*)?$/, 'Projeto geral');
+            const contents = fs.readFileSync(filePath, 'utf8');
+            const variables = [...new Set(contents.split(/\r?\n/).map((line) => {
+                const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+                return match?.[1] || null;
+            }).filter(Boolean))].sort();
+            totalVariables += variables.length;
+
+            if (!projects.has(projectName)) projects.set(projectName, []);
+            projects.get(projectName).push({
+                file: segments[segments.length - 1],
+                relativePath,
+                variables,
+            });
+        }
+
+        return res.json({
+            root: '~/.secrets/projetos',
+            projects: [...projects.entries()]
+                .map(([name, projectFiles]) => ({ name, files: projectFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath)) }))
+                .sort((a, b) => a.name.localeCompare(b.name)),
+            totalFiles: files.length,
+            totalVariables,
+        });
+    } catch (error) {
+        console.error('Error listing project secrets:', error);
+        return res.status(500).json({ error: 'Failed to list project secrets' });
+    }
+});
+
 app.post('/api/system/update', authenticateToken, async (req, res) => {
     try {
         // Get the project root directory (parent of server directory)

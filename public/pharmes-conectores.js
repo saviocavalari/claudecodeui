@@ -95,10 +95,14 @@
       if (linha) {
         if (btn.parentElement !== linha) linha.appendChild(btn);
         btn.classList.remove('ph-solto');
-        // mantem ordem estavel: conectores antes do botao de temas
+        // Mantem ordem estavel: conectores, secrets e temas. Os scripts de
+        // conectores e secrets observam o mesmo cabecalho; disputar a posicao
+        // imediatamente anterior ao tema fazia os botoes se alternarem.
+        var secrets = document.getElementById('ph-sec-btn');
         var fab = document.getElementById('ph-fab');
-        if (fab && fab.parentElement === linha && btn.nextElementSibling !== fab) {
-          linha.insertBefore(btn, fab);
+        var referencia = secrets && secrets.parentElement === linha ? secrets : fab;
+        if (referencia && referencia.parentElement === linha && btn.nextElementSibling !== referencia) {
+          linha.insertBefore(btn, referencia);
         }
       } else {
         if (btn.parentElement !== document.body) document.body.appendChild(btn);
