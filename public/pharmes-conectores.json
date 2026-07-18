@@ -1,5 +1,5 @@
 {
-  "atualizado_em": "2026-07-15",
+  "atualizado_em": "2026-07-18",
   "observacao": "Este painel mostra apenas nomes e descricoes. As credenciais em si ficam em ~/.secrets (fora do git) e nunca aparecem aqui.",
   "conectores": [
     {
@@ -17,6 +17,14 @@
       "arquivo": "~/.secrets/conectores/firebird.env",
       "variaveis": ["FAGRON_DB_HOST_WAN", "FAGRON_DB_PORT", "FAGRON_DB_PATH", "FAGRON_DB_USER", "FAGRON_DB_PASSWORD", "FAGRON_DB_CHARSET", "FAGRON_WHERE"],
       "usado_por": ["fagron-ingest"]
+    },
+    {
+      "id": "firebird-floradem",
+      "nome": "Firebird Floradem (Fcerta)",
+      "descricao": "Banco Firebird da Floradem, outra farmacia/cliente atendida pelo mesmo servidor (pharmesjf2, porta 3052). Credencial SYSDBA (acesso total, nao e usuario restrito) - trocar a senha padrao e evitar consultas de escrita.",
+      "arquivo": "~/.secrets/conectores/firebird-floradem.env",
+      "variaveis": ["FAGRON_DB_HOST_WAN", "FAGRON_DB_PORT", "FAGRON_DB_PATH", "FAGRON_DB_USER", "FAGRON_DB_PASSWORD"],
+      "usado_por": ["ainda nao integrado a nenhum projeto"]
     },
     {
       "id": "supabase-ecommerce",
