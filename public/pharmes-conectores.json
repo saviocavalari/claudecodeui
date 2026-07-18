@@ -21,10 +21,10 @@
     {
       "id": "firebird-floradem",
       "nome": "Firebird Floradem (Fcerta)",
-      "descricao": "Banco Firebird da Floradem, outra farmacia/cliente atendida pelo mesmo servidor (pharmesjf2, porta 3052). Credencial SYSDBA (acesso total, nao e usuario restrito) - trocar a senha padrao e evitar consultas de escrita.",
+      "descricao": "Banco Firebird da Floradem, farmacia que a Pharmes comprou. E um banco ANTIGO E PARADO (nao recebe dados novos) - desde a compra, tudo passou a ser lancado no banco atual da Pharmes. Serve so para consultar historico de vendas/clientes de antes da administracao da Pharmes. Credencial SYSDBA (acesso total, nao e usuario restrito) - trocar a senha padrao e evitar consultas de escrita.",
       "arquivo": "~/.secrets/conectores/firebird-floradem.env",
       "variaveis": ["FAGRON_DB_HOST_WAN", "FAGRON_DB_PORT", "FAGRON_DB_PATH", "FAGRON_DB_USER", "FAGRON_DB_PASSWORD"],
-      "usado_por": ["ainda nao integrado a nenhum projeto"]
+      "usado_por": ["consulta pontual de historico - nenhum projeto integrado"]
     },
     {
       "id": "supabase-ecommerce",
