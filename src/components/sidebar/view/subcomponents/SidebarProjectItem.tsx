@@ -318,7 +318,7 @@ export default function SidebarProjectItem({
         <Button
           variant="ghost"
           className={cn(
-            'hidden md:flex w-full flex-col items-stretch gap-1 p-2 h-auto font-normal hover:bg-accent/50',
+            'relative hidden h-auto w-full items-center p-2 font-normal md:flex hover:bg-accent/50',
             isSelected && 'bg-accent text-accent-foreground',
             isStarred &&
               !isSelected &&
@@ -326,9 +326,7 @@ export default function SidebarProjectItem({
           )}
           onClick={selectAndToggleProject}
         >
-          {/* Primary row: star + name get the full width; the action icons below
-              are invisible until hover, so keeping them out of this row stops
-              them from reserving space and truncating long project names. */}
+          {/* Compact single row; actions overlay the right side only on hover. */}
           <div className="flex w-full items-center gap-3">
             <div
               className={cn(
@@ -387,6 +385,12 @@ export default function SidebarProjectItem({
               </div>
             )}
 
+            {!isEditing && (
+              <span className="flex-shrink-0 text-xs text-muted-foreground">
+                {sessionCountDisplay}
+              </span>
+            )}
+
             {isEditing ? (
               <div className="flex flex-shrink-0 items-center gap-1">
                 <div
@@ -419,28 +423,8 @@ export default function SidebarProjectItem({
             )}
           </div>
 
-          {/* Secondary row: session count / path on the left, folder / emoji /
-              edit / delete actions on the right. Moved here (off the name row)
-              so they no longer squeeze the project name. */}
-          <div className="flex items-center justify-between gap-2 pl-9">
-            <div className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
-              {isEditing ? (
-                project.fullPath
-              ) : (
-                <>
-                  {sessionCountDisplay}
-                  {project.fullPath !== project.displayName && (
-                    <span className="ml-1 opacity-60" title={project.fullPath}>
-                      {' - '}
-                      {project.fullPath.length > 25 ? `...${project.fullPath.slice(-22)}` : project.fullPath}
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-
-            {!isEditing && isAdmin && (
-              <div className="flex flex-shrink-0 items-center gap-1">
+          {!isEditing && isAdmin && (
+            <div className="absolute right-8 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-background/95 px-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                 <div
                   className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
                   onClick={(event) => {
@@ -481,9 +465,8 @@ export default function SidebarProjectItem({
                 >
                   <Trash2 className="h-3 w-3 text-red-600 dark:text-red-400" />
                 </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </Button>
       </div>
 

@@ -10,7 +10,7 @@ const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(
       {/* Inner container keeps border radius while allowing momentum scrolling on touch devices. */}
       <div
         ref={ref}
-        className="h-full w-full overflow-auto rounded-[inherit]"
+        className="scrollbar-themed h-full w-full overflow-auto rounded-[inherit]"
         style={{
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-y',

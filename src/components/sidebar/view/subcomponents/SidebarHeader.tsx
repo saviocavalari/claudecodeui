@@ -76,7 +76,7 @@ export default function SidebarHeader({
         className="truncate text-sm font-bold tracking-tight text-foreground"
         style={{ fontFamily: CLOUDCLI_WORDMARK_FONT_FAMILY }}
       >
-        {t('app.title')}
+        🦁 NÃO PARA
       </h1>
     </div>
   );

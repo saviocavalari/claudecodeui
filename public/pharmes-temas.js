@@ -96,6 +96,62 @@
         '--border': '214 15% 88%', '--input': '214 15% 88%', '--ring': '173 80% 36%',
       },
     },
+    neve: {
+      nome: 'Neve Azul', escuro: false, primaria: '217 91% 60%',
+      vars: {
+        '--background': '214 45% 97%', '--foreground': '222 35% 14%',
+        '--card': '0 0% 100%', '--card-foreground': '222 35% 14%',
+        '--popover': '0 0% 100%', '--popover-foreground': '222 35% 14%',
+        '--primary': '217 91% 60%', '--primary-foreground': '0 0% 100%',
+        '--secondary': '214 32% 92%', '--secondary-foreground': '222 30% 22%',
+        '--muted': '214 30% 93%', '--muted-foreground': '215 16% 43%',
+        '--accent': '213 38% 89%', '--accent-foreground': '222 32% 18%',
+        '--destructive': '0 72% 51%', '--destructive-foreground': '0 0% 100%',
+        '--border': '214 24% 86%', '--input': '214 24% 86%', '--ring': '217 91% 60%',
+      },
+    },
+    areia: {
+      nome: 'Areia', escuro: false, primaria: '25 78% 45%',
+      vars: {
+        '--background': '42 45% 96%', '--foreground': '30 22% 16%',
+        '--card': '45 55% 99%', '--card-foreground': '30 22% 16%',
+        '--popover': '45 55% 99%', '--popover-foreground': '30 22% 16%',
+        '--primary': '25 78% 45%', '--primary-foreground': '45 60% 98%',
+        '--secondary': '39 32% 90%', '--secondary-foreground': '30 22% 22%',
+        '--muted': '39 28% 91%', '--muted-foreground': '30 12% 43%',
+        '--accent': '35 35% 87%', '--accent-foreground': '28 25% 18%',
+        '--destructive': '0 68% 48%', '--destructive-foreground': '0 0% 100%',
+        '--border': '36 24% 83%', '--input': '36 24% 83%', '--ring': '25 78% 45%',
+      },
+    },
+    menta: {
+      nome: 'Menta', escuro: false, primaria: '158 64% 38%',
+      vars: {
+        '--background': '150 30% 97%', '--foreground': '164 28% 13%',
+        '--card': '0 0% 100%', '--card-foreground': '164 28% 13%',
+        '--popover': '0 0% 100%', '--popover-foreground': '164 28% 13%',
+        '--primary': '158 64% 38%', '--primary-foreground': '0 0% 100%',
+        '--secondary': '151 24% 91%', '--secondary-foreground': '164 25% 20%',
+        '--muted': '151 22% 92%', '--muted-foreground': '160 12% 42%',
+        '--accent': '151 30% 87%', '--accent-foreground': '164 28% 17%',
+        '--destructive': '0 72% 51%', '--destructive-foreground': '0 0% 100%',
+        '--border': '152 20% 84%', '--input': '152 20% 84%', '--ring': '158 64% 38%',
+      },
+    },
+    lavanda: {
+      nome: 'Lavanda', escuro: false, primaria: '263 70% 58%',
+      vars: {
+        '--background': '270 38% 97%', '--foreground': '260 28% 15%',
+        '--card': '0 0% 100%', '--card-foreground': '260 28% 15%',
+        '--popover': '0 0% 100%', '--popover-foreground': '260 28% 15%',
+        '--primary': '263 70% 58%', '--primary-foreground': '0 0% 100%',
+        '--secondary': '267 28% 92%', '--secondary-foreground': '260 25% 22%',
+        '--muted': '267 25% 93%', '--muted-foreground': '260 12% 44%',
+        '--accent': '267 34% 89%', '--accent-foreground': '260 28% 18%',
+        '--destructive': '0 72% 51%', '--destructive-foreground': '0 0% 100%',
+        '--border': '266 22% 86%', '--input': '266 22% 86%', '--ring': '263 70% 58%',
+      },
+    },
   };
 
   var FONTES = {
@@ -113,7 +169,16 @@
     enorme: { cap: 'Enorme', px: '19px' },
   };
 
-  var PADRAO = { tema: 'pharmes', fonte: 'padrao', tamanho: 'padrao' };
+  var SKINS = {
+    padrao: { nome: 'Padrao', amostra: 'Visual original do sistema' },
+    minimalista: { nome: 'Minimalista', amostra: 'Sem sombras e com linhas limpas' },
+    glass: { nome: 'Glass', amostra: 'Transparencia e efeito de vidro' },
+    compacta: { nome: 'Compacta', amostra: 'Mais conteudo em menos espaco' },
+    terminal: { nome: 'Terminal', amostra: 'Visual tecnico e quadrado' },
+    neon: { nome: 'Neon', amostra: 'Contornos luminosos e contraste' },
+  };
+
+  var PADRAO = { tema: 'pharmes', skin: 'padrao', fonte: 'padrao', tamanho: 'padrao' };
 
   function carregar() {
     try { return Object.assign({}, PADRAO, JSON.parse(localStorage.getItem('pharmesAparencia') || '{}')); }
@@ -135,6 +200,46 @@
       linhas += '--ring:' + t.vars['--ring'] + ';';
       css += 'html[data-ptema="' + id + '"]{' + linhas + '}\n';
     });
+    css += [
+      'html[data-pskin="minimalista"]{--radius:0rem}',
+      'html[data-pskin="minimalista"] *{box-shadow:none!important;text-shadow:none!important}',
+      'html[data-pskin="minimalista"] button,html[data-pskin="minimalista"] [class*="rounded"]{border-radius:0!important}',
+      'html[data-pskin="minimalista"] [class*="bg-card"]{background:hsl(var(--background))!important}',
+      'html[data-pskin="minimalista"] [class*="border"]{border-color:hsl(var(--border)/.55)!important}',
+      'html[data-pskin="minimalista"] button:hover{background:hsl(var(--foreground)/.045)!important}',
+
+      'html[data-pskin="glass"]{--radius:1.25rem}',
+      'html[data-pskin="glass"] body{background:radial-gradient(circle at 12% 8%,hsl(var(--primary)/.25),transparent 34%),radial-gradient(circle at 88% 92%,hsl(var(--ring)/.18),transparent 38%),linear-gradient(145deg,hsl(var(--background)),hsl(var(--muted)))}',
+      'html[data-pskin="glass"] #root{background:transparent}',
+      'html[data-pskin="glass"] [class*="bg-card"],html[data-pskin="glass"] [class*="bg-background"]{background:hsl(var(--card)/.58)!important;backdrop-filter:blur(28px) saturate(1.65);-webkit-backdrop-filter:blur(28px) saturate(1.65);border-color:hsl(0 0% 100%/.28)!important}',
+      'html[data-pskin="glass"] [class*="backdrop-blur"]{backdrop-filter:blur(32px) saturate(1.7)!important;-webkit-backdrop-filter:blur(32px) saturate(1.7)!important}',
+      'html[data-pskin="glass"] button,html[data-pskin="glass"] input,html[data-pskin="glass"] textarea,html[data-pskin="glass"] select{border-radius:999px!important;box-shadow:inset 0 1px 0 hsl(0 0% 100%/.28),0 4px 16px hsl(var(--foreground)/.08)!important}',
+      'html[data-pskin="glass"] [class*="rounded-lg"],html[data-pskin="glass"] [class*="rounded-xl"]{border-radius:20px!important}',
+      'html[data-pskin="glass"] [class*="shadow"]{box-shadow:0 18px 55px hsl(var(--foreground)/.12),inset 0 1px 0 hsl(0 0% 100%/.22)!important}',
+      'html[data-pskin="glass"] button:hover{transform:translateY(-1px);filter:brightness(1.05)}',
+
+      'html[data-pskin="compacta"]{--radius:.25rem}',
+      'html[data-pskin="compacta"] button{min-height:unset}',
+      'html[data-pskin="compacta"] [class*="py-"]{padding-top:.35rem!important;padding-bottom:.35rem!important}',
+      'html[data-pskin="compacta"] [class*="px-4"],html[data-pskin="compacta"] [class*="p-4"]{padding-left:.55rem!important;padding-right:.55rem!important}',
+      'html[data-pskin="compacta"] [class*="gap-3"],html[data-pskin="compacta"] [class*="gap-4"]{gap:.4rem!important}',
+      '@media(min-width:768px){html[data-pskin="compacta"] [class~="md:w-72"]{width:15rem!important}}',
+
+      'html[data-pskin="terminal"]{--radius:0rem}',
+      'html[data-pskin="terminal"] body{font-family:"IBM Plex Mono","Courier New",monospace!important;background-image:repeating-linear-gradient(0deg,hsl(var(--foreground)/.025) 0,hsl(var(--foreground)/.025) 1px,transparent 1px,transparent 4px)}',
+      'html[data-pskin="terminal"] button,html[data-pskin="terminal"] input,html[data-pskin="terminal"] textarea,html[data-pskin="terminal"] select,html[data-pskin="terminal"] [class*="rounded"]{border-radius:0!important}',
+      'html[data-pskin="terminal"] *{box-shadow:none!important}',
+      'html[data-pskin="terminal"] button{text-transform:uppercase;letter-spacing:.06em}',
+      'html[data-pskin="terminal"] [class*="border"]{border-style:dashed!important;border-color:hsl(var(--primary)/.55)!important}',
+      'html[data-pskin="terminal"] input:focus,html[data-pskin="terminal"] textarea:focus{outline:1px solid hsl(var(--primary))!important}',
+
+      'html[data-pskin="neon"]{--radius:.8rem}',
+      'html[data-pskin="neon"] body{background:radial-gradient(circle at 50% -20%,hsl(var(--primary)/.2),transparent 48%),hsl(var(--background))}',
+      'html[data-pskin="neon"] button,html[data-pskin="neon"] input,html[data-pskin="neon"] textarea,html[data-pskin="neon"] [class*="border"]{border-color:hsl(var(--primary)/.62)!important}',
+      'html[data-pskin="neon"] [class*="bg-card"]{background:linear-gradient(145deg,hsl(var(--card)),hsl(var(--primary)/.06))!important}',
+      'html[data-pskin="neon"] button:hover,html[data-pskin="neon"] [class*="shadow"]{box-shadow:0 0 8px hsl(var(--primary)/.32),0 0 24px hsl(var(--primary)/.2)!important}',
+      'html[data-pskin="neon"] input:focus,html[data-pskin="neon"] textarea:focus{box-shadow:0 0 0 2px hsl(var(--primary)/.3),0 0 22px hsl(var(--primary)/.28)!important}',
+    ].join('\n');
     var st = document.createElement('style');
     st.id = 'pharmes-tema-style';
     st.textContent = css;
@@ -153,6 +258,7 @@
     var raiz = document.documentElement;
     var tema = TEMAS[p.tema] || TEMAS.pharmes;
     raiz.setAttribute('data-ptema', p.tema);
+    raiz.setAttribute('data-pskin', SKINS[p.skin] ? p.skin : 'padrao');
     if (tema.escuro) { raiz.classList.add('dark'); try { localStorage.setItem('theme', 'dark'); } catch (e) {} }
     else { raiz.classList.remove('dark'); try { localStorage.setItem('theme', 'light'); } catch (e) {} }
     raiz.style.colorScheme = tema.escuro ? 'dark' : 'light';
@@ -244,6 +350,7 @@
     panel.innerHTML =
       '<div class="top"><h2>Aparencia</h2><button class="x" data-x>&times;</button></div>' +
       '<div class="g"><span class="lab">Tema de cores</span><div class="temas" data-temas></div></div>' +
+      '<div class="g"><span class="lab">Skin da interface</span><div class="rows" data-skins></div></div>' +
       '<div class="g"><span class="lab">Fonte</span><div class="rows" data-fontes></div></div>' +
       '<div class="g"><span class="lab">Tamanho do texto</span><div class="tam" data-tam></div></div>' +
       '<button class="reset" data-reset>Restaurar padrao</button>';
@@ -292,6 +399,12 @@
           '<div><div class="rn" ' + ff + '>' + f.nome + '</div><div class="ra">' + f.amostra + '</div></div>' +
           '<span class="ck">&#10003;</span></div>';
       }).join('');
+      panel.querySelector('[data-skins]').innerHTML = Object.keys(SKINS).map(function (id) {
+        var skin = SKINS[id];
+        return '<div class="row' + (pref.skin === id ? ' on' : '') + '" data-skin="' + id + '">' +
+          '<div><div class="rn">' + skin.nome + '</div><div class="ra">' + skin.amostra + '</div></div>' +
+          '<span class="ck">&#10003;</span></div>';
+      }).join('');
       panel.querySelector('[data-tam]').innerHTML = Object.keys(TAMANHOS).map(function (id, i) {
         var t = TAMANHOS[id];
         return '<div class="tb' + (pref.tamanho === id ? ' on' : '') + '" data-tamanho="' + id + '">' +
@@ -303,6 +416,7 @@
     function fechar() { back.classList.remove('on'); panel.classList.remove('on'); }
 
     fab.addEventListener('click', abrir);
+    window.addEventListener('pharmes:open-appearance', abrir);
     back.addEventListener('click', fechar);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fechar(); });
 
@@ -310,9 +424,11 @@
       if (e.target.closest('[data-x]')) return fechar();
       if (e.target.closest('[data-reset]')) { pref = Object.assign({}, PADRAO); salvar(pref); aplicar(pref); render(); return; }
       var t = e.target.closest('[data-tema]');
+      var s = e.target.closest('[data-skin]');
       var f = e.target.closest('[data-fonte]');
       var z = e.target.closest('[data-tamanho]');
       if (t) pref.tema = t.getAttribute('data-tema');
+      else if (s) pref.skin = s.getAttribute('data-skin');
       else if (f) pref.fonte = f.getAttribute('data-fonte');
       else if (z) pref.tamanho = z.getAttribute('data-tamanho');
       else return;

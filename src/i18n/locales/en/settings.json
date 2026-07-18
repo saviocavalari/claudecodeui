@@ -147,6 +147,12 @@
     }
   },
   "appearanceSettings": {
+    "customThemes": {
+      "title": "System themes",
+      "label": "Colors, font and size",
+      "description": "Choose light or dark themes and customize readability",
+      "button": "Choose theme"
+    },
     "darkMode": {
       "label": "Dark Mode",
       "description": "Toggle between light and dark themes"

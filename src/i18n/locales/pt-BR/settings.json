@@ -147,6 +147,12 @@
     }
   },
   "appearanceSettings": {
+    "customThemes": {
+      "title": "Temas do sistema",
+      "label": "Cores, fonte e tamanho",
+      "description": "Escolha entre temas claros e escuros e personalize a leitura",
+      "button": "Escolher tema"
+    },
     "darkMode": {
       "label": "Modo escuro",
       "description": "Alternar entre os temas claro e escuro"

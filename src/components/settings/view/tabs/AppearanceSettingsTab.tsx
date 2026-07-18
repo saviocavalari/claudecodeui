@@ -30,6 +30,23 @@ export default function AppearanceSettingsTab({
 
   return (
     <div className="space-y-8">
+      <SettingsSection title={t('appearanceSettings.customThemes.title')}>
+        <SettingsCard>
+          <SettingsRow
+            label={t('appearanceSettings.customThemes.label')}
+            description={t('appearanceSettings.customThemes.description')}
+          >
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('pharmes:open-appearance'))}
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              {t('appearanceSettings.customThemes.button')}
+            </button>
+          </SettingsRow>
+        </SettingsCard>
+      </SettingsSection>
+
       <SettingsSection title={t('appearanceSettings.darkMode.label')}>
         <SettingsCard>
           <SettingsRow

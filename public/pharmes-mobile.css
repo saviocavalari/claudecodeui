@@ -36,7 +36,7 @@ textarea[data-slot="prompt-input-textarea"],
    Usa padding-bottom, NAO 'bottom': o app controla bottom com
    var(--keyboard-height) inline para acompanhar o teclado. */
 body.pwa-mode .fixed.inset-0 {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: 0;
 }
 
 /* 100dvh em vez de 100vh: evita a tela "pular" quando o teclado abre */
@@ -45,4 +45,73 @@ body.pwa-mode .fixed.inset-0 {
 }
 body.pwa-mode #root {
   height: 100dvh;
+}
+
+/* O PWA mobile tem uma composicao propria: o status da execucao faz parte do
+   composer, em vez de flutuar por cima da ultima mensagem. A safe area fica
+   somente no composer, evitando o espaco inferior duplicado no iPhone. */
+@media screen and (max-width: 767px) {
+  body.pwa-mode .chat-composer-shell {
+    padding: 0 8px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    background: linear-gradient(to bottom, transparent, hsl(var(--background) / 0.96) 14px);
+  }
+
+  body.pwa-mode .chat-activity-shell {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 0 6px !important;
+    transform: none !important;
+  }
+
+  body.pwa-mode .chat-activity-shell .chat-activity-tab {
+    height: 30px !important;
+    border-width: 1px !important;
+    border-radius: 999px !important;
+    background: hsl(var(--card) / 0.94) !important;
+    padding-inline: 12px !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  body.pwa-mode .chat-messages-pane {
+    padding-bottom: 10px !important;
+    scroll-padding-bottom: 10px;
+  }
+
+  body.pwa-mode [data-slot="prompt-input"] {
+    border-radius: 18px !important;
+    background: hsl(var(--card) / 0.94) !important;
+    box-shadow: 0 8px 28px hsl(var(--foreground) / 0.1) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  body.pwa-mode [data-slot="prompt-input-textarea"] {
+    min-height: 46px;
+    max-height: 28dvh !important;
+    padding: 10px 14px !important;
+  }
+
+  body.pwa-mode [data-slot="prompt-input-footer"] {
+    min-height: 48px;
+    padding: 6px 8px !important;
+  }
+
+  body.pwa-mode [data-slot="prompt-input-tools"] {
+    min-width: 0;
+    gap: 2px !important;
+  }
+
+  body.pwa-mode [data-slot="prompt-input-tools"] > * {
+    flex-shrink: 0;
+  }
+
+  /* No Glass, mantem a estetica Apple, mas aumenta a legibilidade no painel
+     pequeno e evita que varias camadas transparentes se misturem. */
+  html[data-pskin="glass"] body.pwa-mode [data-slot="prompt-input"],
+  html[data-pskin="glass"] body.pwa-mode .chat-activity-tab {
+    background: hsl(var(--card) / 0.9) !important;
+    border-color: hsl(var(--border) / 0.72) !important;
+  }
 }
