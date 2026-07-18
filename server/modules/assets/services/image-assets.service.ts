@@ -15,8 +15,30 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/svg+xml',
 ]);
 
+const ALLOWED_FILE_EXTENSIONS = new Set([
+  '.txt',
+  '.md',
+  '.markdown',
+  '.csv',
+  '.tsv',
+  '.json',
+  '.yaml',
+  '.yml',
+  '.xml',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ods',
+  '.ppt',
+  '.pptx',
+  '.rtf',
+  '.log',
+]);
+
 // Used only by this service and the assets routes via the barrel file.
-type StoredImageAsset = {
+type StoredAsset = {
   /** Original upload filename, for display. */
   name: string;
   /** Absolute posix-normalized path inside the global assets folder. */
@@ -26,7 +48,7 @@ type StoredImageAsset = {
 };
 
 // Shape of one multer-stored file; kept local because only this module reads it.
-type UploadedImageFile = {
+type UploadedAssetFile = {
   originalname: string;
   filename: string;
   size: number;
@@ -36,6 +58,15 @@ type UploadedImageFile = {
 /** Returns whether one uploaded mime type may be stored as a chat image asset. */
 export function isAllowedImageMimeType(mimeType: string): boolean {
   return ALLOWED_IMAGE_MIME_TYPES.has(mimeType);
+}
+
+export function isAllowedAttachmentUpload(fileName: string, mimeType: string): boolean {
+  if (isAllowedImageMimeType(mimeType)) {
+    return true;
+  }
+
+  const extension = path.extname(fileName).toLowerCase();
+  return ALLOWED_FILE_EXTENSIONS.has(extension);
 }
 
 /** Creates the global `~/.cloudcli/assets` folder if needed and returns it. */
@@ -50,7 +81,7 @@ export async function ensureImageAssetsDir(): Promise<string> {
  * chat composer. The absolute path is what providers receive and what session
  * history carries back to the UI.
  */
-export function buildStoredImageRecords(files: UploadedImageFile[]): StoredImageAsset[] {
+export function buildStoredAssetRecords(files: UploadedAssetFile[]): StoredAsset[] {
   const assetsDir = getGlobalImageAssetsDir();
   return files.map((file) => ({
     name: file.originalname,

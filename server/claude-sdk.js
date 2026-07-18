@@ -19,7 +19,7 @@ import path from 'path';
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
-import { buildClaudeUserContent, normalizeImageDescriptors } from './shared/image-attachments.js';
+import { appendFilesInputTag, buildClaudeUserContent, normalizeFileDescriptors, normalizeImageDescriptors } from './shared/image-attachments.js';
 import { CLAUDE_FALLBACK_MODELS } from './modules/providers/list/claude/claude-models.provider.js';
 import { providerModelsService } from './modules/providers/services/provider-models.service.js';
 import { resolveClaudeCodeExecutablePath } from './shared/claude-cli-path.js';
@@ -374,12 +374,16 @@ function extractTokenBudget(sdkMessage) {
  * @param {string} cwd - Project working directory image paths resolve against
  * @returns {Promise<string|AsyncIterable>} SDK prompt payload
  */
-async function buildPromptPayload(command, images, cwd) {
+async function buildPromptPayload(command, images, files, cwd) {
+  const promptWithFiles = normalizeFileDescriptors(files).length > 0
+    ? appendFilesInputTag(command, files)
+    : command;
+
   if (normalizeImageDescriptors(images).length === 0) {
-    return command;
+    return promptWithFiles;
   }
 
-  const content = await buildClaudeUserContent(command, images, cwd);
+  const content = await buildClaudeUserContent(promptWithFiles, images, cwd);
   return (async function* () {
     yield {
       type: 'user',
@@ -497,7 +501,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
     // Turns with image attachments switch to streaming input so the images
     // ride along as real content blocks. Built per query attempt because an
     // async generator cannot be replayed once consumed.
-    const createPrompt = () => buildPromptPayload(command, options.images, options.cwd);
+    const createPrompt = () => buildPromptPayload(command, options.images, options.files, options.cwd);
 
     sdkOptions.hooks = {
       Notification: [{

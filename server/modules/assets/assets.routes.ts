@@ -5,9 +5,9 @@ import mime from 'mime-types';
 import multer from 'multer';
 
 import {
-  buildStoredImageRecords,
+  buildStoredAssetRecords,
   ensureImageAssetsDir,
-  isAllowedImageMimeType,
+  isAllowedAttachmentUpload,
   resolveImageAssetFile,
 } from '@/modules/assets/services/image-assets.service.js';
 
@@ -31,14 +31,14 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (isAllowedImageMimeType(file.mimetype)) {
+    if (isAllowedAttachmentUpload(file.originalname, file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, WebP, and SVG are allowed.'));
+      cb(new Error('Invalid file type. Allowed: images, PDF, text, CSV, JSON, Word, Excel, PowerPoint, and related documents.'));
     }
   },
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: 20 * 1024 * 1024,
     files: 5,
   },
 });
@@ -59,7 +59,23 @@ router.post('/images', (req, res) => {
       return res.status(400).json({ error: 'No image files provided' });
     }
 
-    res.json({ images: buildStoredImageRecords(files) });
+    res.json({ images: buildStoredAssetRecords(files) });
+  });
+});
+
+router.post('/files', (req, res) => {
+  upload.array('files', 5)(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      return res.status(400).json({ error: message });
+    }
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (files.length === 0) {
+      return res.status(400).json({ error: 'No files provided' });
+    }
+
+    res.json({ files: buildStoredAssetRecords(files) });
   });
 });
 

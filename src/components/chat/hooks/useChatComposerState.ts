@@ -152,7 +152,7 @@ const createFakeSubmitEvent = () => {
 
 export type QueuedDraft = {
   content: string;
-  images: File[];
+  attachments: File[];
   /**
    * Send options snapshotted at queue time. Persisted with the draft so the
    * app-level auto-send can dispatch the message with the right model and
@@ -163,8 +163,8 @@ export type QueuedDraft = {
 
 const restoreQueuedDraft = (sessionKey: string): QueuedDraft | null => {
   const saved = readQueuedMessage(sessionKey);
-  // Image attachments can't survive a reload; only text and options persist.
-  return saved ? { content: saved.content, images: [], options: saved.options } : null;
+  // Attachments can't survive a reload; only text and options persist.
+  return saved ? { content: saved.content, attachments: [], options: saved.options } : null;
 };
 
 const getNotificationSessionSummary = (
@@ -221,9 +221,9 @@ export function useChatComposerState({
     }
     return '';
   });
-  const [attachedImages, setAttachedImages] = useState<File[]>([]);
-  const [uploadingImages, setUploadingImages] = useState<Map<string, number>>(new Map());
-  const [imageErrors, setImageErrors] = useState<Map<string, string>>(new Map());
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState<Map<string, number>>(new Map());
+  const [attachmentErrors, setAttachmentErrors] = useState<Map<string, string>>(new Map());
   const [isTextareaExpanded, setIsTextareaExpanded] = useState(false);
   const [commandModalPayload, setCommandModalPayload] = useState<CommandModalPayload | null>(null);
 
@@ -513,7 +513,7 @@ export function useChatComposerState({
     lastAutosizedInputRef.current = target.value;
   }, []);
 
-  const handleImageFiles = useCallback((files: File[]) => {
+  const handleAttachmentFiles = useCallback((files: File[]) => {
     const validFiles = files.filter((file) => {
       try {
         if (!file || typeof file !== 'object') {
@@ -521,15 +521,11 @@ export function useChatComposerState({
           return false;
         }
 
-        if (!file.type || !file.type.startsWith('image/')) {
-          return false;
-        }
-
-        if (!file.size || file.size > 5 * 1024 * 1024) {
+        if (!file.size || file.size > 20 * 1024 * 1024) {
           const fileName = file.name || 'Unknown file';
-          setImageErrors((previous) => {
+          setAttachmentErrors((previous) => {
             const next = new Map(previous);
-            next.set(fileName, 'File too large (max 5MB)');
+            next.set(fileName, 'File too large (max 20MB)');
             return next;
           });
           return false;
@@ -543,7 +539,7 @@ export function useChatComposerState({
     });
 
     if (validFiles.length > 0) {
-      setAttachedImages((previous) => [...previous, ...validFiles].slice(0, 5));
+      setAttachedFiles((previous) => [...previous, ...validFiles].slice(0, 5));
     }
   }, []);
 
@@ -557,28 +553,41 @@ export function useChatComposerState({
         }
         const file = item.getAsFile();
         if (file) {
-          handleImageFiles([file]);
+          handleAttachmentFiles([file]);
         }
       });
 
       if (items.length === 0 && event.clipboardData.files.length > 0) {
         const files = Array.from(event.clipboardData.files);
-        const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-        if (imageFiles.length > 0) {
-          handleImageFiles(imageFiles);
+        if (files.length > 0) {
+          handleAttachmentFiles(files);
         }
       }
     },
-    [handleImageFiles],
+    [handleAttachmentFiles],
   );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'],
+      'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
+      'application/pdf': ['.pdf'],
+      'text/plain': ['.txt', '.log', '.md', '.markdown'],
+      'text/csv': ['.csv', '.tsv'],
+      'application/json': ['.json'],
+      'application/xml': ['.xml'],
+      'application/yaml': ['.yaml', '.yml'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.oasis.opendocument.spreadsheet': ['.ods'],
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'application/rtf': ['.rtf'],
     },
-    maxSize: 5 * 1024 * 1024,
+    maxSize: 20 * 1024 * 1024,
     maxFiles: 5,
-    onDrop: handleImageFiles,
+    onDrop: handleAttachmentFiles,
     noClick: true,
     noKeyboard: true,
   });
@@ -660,14 +669,14 @@ export function useChatComposerState({
         queuedDraftSessionRef.current = sessionKey;
         setQueuedDraft({
           content: currentInput,
-          images: attachedImages,
+          attachments: attachedFiles,
           options: buildSendOptions(currentInput),
         });
         setInput('');
         inputValueRef.current = '';
-        setAttachedImages([]);
-        setUploadingImages(new Map());
-        setImageErrors(new Map());
+        setAttachedFiles([]);
+        setUploadingAttachments(new Map());
+        setAttachmentErrors(new Map());
         resetCommandMenuState();
         setIsTextareaExpanded(false);
         if (textareaRef.current) {
@@ -701,9 +710,9 @@ export function useChatComposerState({
           executeCommand(matchedCommand, isHelpAlias ? '/help' : commandInput);
           setInput('');
           inputValueRef.current = '';
-          setAttachedImages([]);
-          setUploadingImages(new Map());
-          setImageErrors(new Map());
+          setAttachedFiles([]);
+          setUploadingAttachments(new Map());
+          setAttachmentErrors(new Map());
           resetCommandMenuState();
           setIsTextareaExpanded(false);
           if (textareaRef.current) {
@@ -716,31 +725,35 @@ export function useChatComposerState({
       const messageContent = currentInput;
 
       let uploadedImages: unknown[] = [];
-      if (attachedImages.length > 0) {
+      let uploadedFiles: unknown[] = [];
+      if (attachedFiles.length > 0) {
         const formData = new FormData();
-        attachedImages.forEach((file) => {
-          formData.append('images', file);
+        attachedFiles.forEach((file) => {
+          formData.append('files', file);
         });
 
         try {
-          const response = await authenticatedFetch('/api/assets/images', {
+          const response = await authenticatedFetch('/api/assets/files', {
             method: 'POST',
             headers: {},
             body: formData,
           });
 
           if (!response.ok) {
-            throw new Error('Failed to upload images');
+            const errorPayload = await response.json().catch(() => null);
+            throw new Error(errorPayload?.error || `Failed to upload attachments (HTTP ${response.status})`);
           }
 
           const result = await response.json();
-          uploadedImages = result.images;
+          const uploadedAttachments = Array.isArray(result.files) ? result.files : [];
+          uploadedImages = uploadedAttachments.filter((entry: any) => typeof entry?.mimeType === 'string' && entry.mimeType.startsWith('image/'));
+          uploadedFiles = uploadedAttachments.filter((entry: any) => !(typeof entry?.mimeType === 'string' && entry.mimeType.startsWith('image/')));
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
-          console.error('Image upload failed:', error);
+          console.error('Attachment upload failed:', error);
           addMessage({
             type: 'error',
-            content: `Failed to upload images: ${message}`,
+            content: `Failed to upload attachments: ${message}`,
             timestamp: new Date(),
           });
           return;
@@ -800,6 +813,7 @@ export function useChatComposerState({
         type: 'user',
         content: currentInput,
         images: uploadedImages as any,
+        files: uploadedFiles as any,
         timestamp: new Date(),
       };
 
@@ -825,15 +839,16 @@ export function useChatComposerState({
         options: {
           ...buildSendOptions(messageContent),
           images: uploadedImages,
+          files: uploadedFiles,
         },
       });
 
       setInput('');
       inputValueRef.current = '';
       resetCommandMenuState();
-      setAttachedImages([]);
-      setUploadingImages(new Map());
-      setImageErrors(new Map());
+      setAttachedFiles([]);
+      setUploadingAttachments(new Map());
+      setAttachmentErrors(new Map());
       setIsTextareaExpanded(false);
 
       if (textareaRef.current) {
@@ -844,7 +859,7 @@ export function useChatComposerState({
     },
     [
       selectedSession,
-      attachedImages,
+      attachedFiles,
       buildSendOptions,
       currentSessionId,
       executeCommand,
@@ -904,7 +919,7 @@ export function useChatComposerState({
       setQueuedDraft(null);
       setInput(queuedDraft.content);
       inputValueRef.current = queuedDraft.content;
-      setAttachedImages(queuedDraft.images);
+      setAttachedFiles(queuedDraft.attachments);
       setTimeout(() => {
         handleSubmitRef.current?.(createFakeSubmitEvent());
       }, 0);
@@ -919,7 +934,7 @@ export function useChatComposerState({
     setQueuedDraft(null);
     setInput(queuedDraft.content);
     inputValueRef.current = queuedDraft.content;
-    setAttachedImages(queuedDraft.images);
+    setAttachedFiles(queuedDraft.attachments);
     textareaRef.current?.focus();
   }, [queuedDraft]);
 
@@ -1190,14 +1205,14 @@ export function useChatComposerState({
     selectedFileIndex,
     renderInputWithMentions,
     selectFile,
-    attachedImages,
-    setAttachedImages,
-    uploadingImages,
-    imageErrors,
+    attachedFiles,
+    setAttachedFiles,
+    uploadingAttachments,
+    attachmentErrors,
     getRootProps,
     getInputProps,
     isDragActive,
-    openImagePicker: open,
+    openFilePicker: open,
     handleSubmit,
     queuedDraft,
     editQueuedDraft,

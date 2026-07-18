@@ -45,6 +45,24 @@ type InteractiveOption = {
 
 const COPY_HIDDEN_TOOL_NAMES = new Set(['Bash', 'Edit', 'Write', 'ApplyPatch']);
 
+function UserFileAttachments({ files }: { files: NonNullable<ChatMessage['files']> }) {
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      {files.map((file, index) => (
+        <div
+          key={file.path || file.name || index}
+          className="max-w-[280px] rounded-xl border border-border/60 bg-background/90 px-3 py-2 text-left shadow-sm"
+        >
+          <div className="truncate text-sm font-medium">{file.name || 'Attached file'}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {file.mimeType || file.path || 'File'}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, showRawParameters, showThinking, selectedProject, provider }: MessageComponentProps) => {
   const { t } = useTranslation('chat');
   const isGrouped = prevMessage && prevMessage.type === message.type &&
@@ -94,7 +112,10 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
                 projectId={selectedProject?.projectId}
               />
             )}
-            {userCopyContent.trim().length > 0 || !message.images?.length ? (
+            {message.files && message.files.length > 0 && (
+              <UserFileAttachments files={message.files} />
+            )}
+            {userCopyContent.trim().length > 0 || !message.images?.length || Boolean(message.files?.length) ? (
               <div className="group max-w-full rounded-2xl rounded-br-md bg-blue-600 px-3 py-2 text-white shadow-sm sm:px-4">
                 <div dir="auto" className="whitespace-pre-wrap break-words font-serif text-sm">
                   {message.content}
@@ -401,4 +422,3 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
 });
 
 export default MessageComponent;
-

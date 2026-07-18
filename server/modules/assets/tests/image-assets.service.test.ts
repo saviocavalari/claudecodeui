@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  buildStoredImageRecords,
+  buildStoredAssetRecords,
   isAllowedImageMimeType,
   resolveImageAssetFile,
 } from '@/modules/assets/services/image-assets.service.js';
@@ -18,8 +18,8 @@ test('isAllowedImageMimeType accepts image formats and rejects the rest', () => 
   assert.equal(isAllowedImageMimeType('text/html'), false);
 });
 
-test('buildStoredImageRecords returns absolute posix paths in the assets dir', () => {
-  const records = buildStoredImageRecords([
+test('buildStoredAssetRecords returns absolute posix paths in the assets dir', () => {
+  const records = buildStoredAssetRecords([
     { originalname: 'shot.png', filename: '123-456-shot.png', size: 42, mimetype: 'image/png' },
   ]);
 

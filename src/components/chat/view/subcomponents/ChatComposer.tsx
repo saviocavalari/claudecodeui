@@ -11,7 +11,7 @@ import type {
   RefObject,
   TouchEvent,
 } from 'react';
-import { ImageIcon, MessageSquareIcon, XIcon, Loader2, ChevronDown, Check, ArrowUpIcon } from 'lucide-react';
+import { PaperclipIcon, MessageSquareIcon, XIcon, Loader2, ChevronDown, Check, ArrowUpIcon, FileTextIcon } from 'lucide-react';
 
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import { useVoiceAvailable } from '../../hooks/useVoiceAvailable';
@@ -84,10 +84,10 @@ interface ChatComposerProps {
   queuedDraft: QueuedDraft | null;
   onEditQueuedDraft: () => void;
   onDeleteQueuedDraft: () => void;
-  attachedImages: File[];
+  attachedFiles: File[];
   onRemoveImage: (index: number) => void;
-  uploadingImages: Map<string, number>;
-  imageErrors: Map<string, string>;
+  uploadingAttachments: Map<string, number>;
+  attachmentErrors: Map<string, string>;
   showFileDropdown: boolean;
   filteredFiles: MentionableFile[];
   selectedFileIndex: number;
@@ -100,7 +100,7 @@ interface ChatComposerProps {
   frequentCommands: SlashCommand[];
   getRootProps: (...args: unknown[]) => Record<string, unknown>;
   getInputProps: (...args: unknown[]) => Record<string, unknown>;
-  openImagePicker: () => void;
+  openFilePicker: () => void;
   inputHighlightRef: RefObject<HTMLDivElement>;
   renderInputWithMentions: (text: string) => ReactNode;
   textareaRef: RefObject<HTMLTextAreaElement>;
@@ -146,10 +146,10 @@ export default function ChatComposer({
   queuedDraft,
   onEditQueuedDraft,
   onDeleteQueuedDraft,
-  attachedImages,
+  attachedFiles,
   onRemoveImage,
-  uploadingImages,
-  imageErrors,
+  uploadingAttachments,
+  attachmentErrors,
   showFileDropdown,
   filteredFiles,
   selectedFileIndex,
@@ -162,7 +162,7 @@ export default function ChatComposer({
   frequentCommands,
   getRootProps,
   getInputProps,
-  openImagePicker,
+  openFilePicker,
   inputHighlightRef,
   renderInputWithMentions,
   textareaRef,
@@ -304,7 +304,7 @@ export default function ChatComposer({
   return (
     <div className="chat-composer-shell relative flex-shrink-0 px-2 pb-2 pt-0 sm:px-4 sm:pb-4 md:px-4 md:pb-6">
       {!hasPendingPermissions && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-10 w-[calc(100%-1rem)] max-w-[54.25rem] -translate-x-1/2 translate-y-px bg-transparent sm:w-[calc(100%-2rem)]">
+        <div className="chat-activity-shell pointer-events-none absolute bottom-full left-1/2 z-10 w-[calc(100%-1rem)] max-w-[54.25rem] -translate-x-1/2 translate-y-px bg-transparent sm:w-[calc(100%-2rem)]">
           <ActivityIndicator activity={activity} onAbort={onAbortSession} isInputFocused={isInputFocused} />
         </div>
       )}
@@ -322,7 +322,7 @@ export default function ChatComposer({
       {queuedDraft && (
         <QueuedMessageCard
           content={queuedDraft.content}
-          imageCount={queuedDraft.images.length}
+          imageCount={queuedDraft.attachments.length}
           onEdit={onEditQueuedDraft}
           onDelete={onDeleteQueuedDraft}
         />
@@ -386,23 +386,43 @@ export default function ChatComposer({
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
-                <p className="text-sm font-medium">Drop images here</p>
+                <p className="text-sm font-medium">Drop files here</p>
               </div>
             </div>
           )}
 
-          {attachedImages.length > 0 && (
+          {attachedFiles.length > 0 && (
             <PromptInputHeader>
               <div className="rounded-xl bg-muted/40 p-2">
                 <div className="flex flex-wrap gap-2">
-                  {attachedImages.map((file, index) => (
-                    <ImageAttachment
-                      key={index}
-                      file={file}
-                      onRemove={() => onRemoveImage(index)}
-                      uploadProgress={uploadingImages.get(file.name)}
-                      error={imageErrors.get(file.name)}
-                    />
+                  {attachedFiles.map((file, index) => (
+                    file.type.startsWith('image/')
+                      ? (
+                          <ImageAttachment
+                            key={`${file.name}-${index}`}
+                            file={file}
+                            onRemove={() => onRemoveImage(index)}
+                            uploadProgress={uploadingAttachments.get(file.name)}
+                            error={attachmentErrors.get(file.name)}
+                          />
+                        )
+                      : (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="flex min-w-[160px] max-w-[220px] items-center gap-2 rounded-xl border border-border/60 bg-background/85 px-3 py-2 text-sm"
+                          >
+                            <FileTextIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium">{file.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {attachmentErrors.get(file.name) || `${Math.max(1, Math.round(file.size / 1024))} KB`}
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => onRemoveImage(index)} className="text-muted-foreground hover:text-foreground">
+                              <XIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )
                   ))}
                 </div>
               </div>
@@ -437,10 +457,10 @@ export default function ChatComposer({
         <PromptInputFooter>
           <PromptInputTools>
             <PromptInputButton
-              tooltip={{ content: t('input.attachImages') }}
-              onClick={openImagePicker}
+              tooltip={{ content: 'Anexar imagens ou documentos' }}
+              onClick={openFilePicker}
             >
-              <ImageIcon />
+              <PaperclipIcon />
             </PromptInputButton>
 
             {onVoiceTranscript && voiceAvailable && (

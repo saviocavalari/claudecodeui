@@ -16,6 +16,14 @@ export interface ChatImage {
   path?: string;
   name?: string;
   mimeType?: string;
+  size?: number;
+}
+
+export interface ChatFileAttachment {
+  path?: string;
+  name?: string;
+  mimeType?: string;
+  size?: number;
 }
 
 export interface ToolResult {
@@ -40,6 +48,7 @@ export interface ChatMessage {
   displayText?: string;
   timestamp: string | number | Date;
   images?: ChatImage[];
+  files?: ChatFileAttachment[];
   reasoning?: string;
   isThinking?: boolean;
   isStreaming?: boolean;

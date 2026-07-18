@@ -86,6 +86,7 @@ function chatMessageToNormalized(
     // Keep attachment references on the local echo so the user bubble shows
     // its images immediately, before the server-backed copy replaces it.
     images: Array.isArray(msg.images) && msg.images.length > 0 ? msg.images : undefined,
+    files: Array.isArray(msg.files) && msg.files.length > 0 ? msg.files : undefined,
   } as NormalizedMessage;
 }
 

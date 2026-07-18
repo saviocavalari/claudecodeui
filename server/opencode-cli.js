@@ -3,7 +3,7 @@ import fsSync from 'node:fs';
 import crossSpawn from 'cross-spawn';
 import Database from 'better-sqlite3';
 
-import { appendImagesInputTag } from './shared/image-attachments.js';
+import { appendFilesInputTag, appendImagesInputTag } from './shared/image-attachments.js';
 import { sessionsService } from './modules/providers/services/sessions.service.js';
 import { providerAuthService } from './modules/providers/services/provider-auth.service.js';
 import { providerModelsService } from './modules/providers/services/provider-models.service.js';
@@ -124,7 +124,7 @@ function readOpenCodeTokenUsage(sessionId) {
 
 async function spawnOpenCode(command, options = {}, ws) {
   return new Promise((resolve, reject) => {
-    const { sessionId, projectPath, cwd, model, effort, sessionSummary, images, permissionMode } = options;
+    const { sessionId, projectPath, cwd, model, effort, sessionSummary, images, files, permissionMode } = options;
     const workingDir = cwd || projectPath || process.cwd();
     const processKey = sessionId || Date.now().toString();
     let capturedSessionId = sessionId || null;
@@ -262,7 +262,7 @@ async function spawnOpenCode(command, options = {}, ws) {
         // to the prompt; the session history reader strips the tag back out.
         // opencode is a .cmd shim on Windows, so the whole argument must be
         // newline-free or cmd.exe silently truncates it at the first newline.
-        args.push(flattenPromptForWindowsShell(appendImagesInputTag(command.trim(), images)));
+        args.push(flattenPromptForWindowsShell(appendFilesInputTag(appendImagesInputTag(command.trim(), images), files)));
       }
 
       opencodeProcess = spawnFunction('opencode', args, {

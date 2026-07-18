@@ -28,6 +28,14 @@ export type ImageAttachmentDescriptor = {
   mimeType?: string;
 };
 
+export type FileAttachmentDescriptor = {
+  /** Project-relative (preferred) or absolute path to the stored file. */
+  path: string;
+  name?: string;
+  mimeType?: string;
+  size?: number;
+};
+
 /** Media types the Claude Messages API accepts for base64 image blocks. */
 const CLAUDE_IMAGE_MEDIA_TYPES = new Set([
   'image/jpeg',
@@ -71,6 +79,39 @@ export function normalizeImageDescriptors(images: unknown): ImageAttachmentDescr
         path: entryPath,
         name: typeof record.name === 'string' ? record.name : undefined,
         mimeType: typeof record.mimeType === 'string' ? record.mimeType : undefined,
+      });
+    }
+  }
+  return descriptors;
+}
+
+/**
+ * Accepts the loosely-typed `options.files` payload from chat.send and returns
+ * only well-formed descriptors. Plain path strings are supported so callers
+ * can also pass bare path arrays.
+ */
+export function normalizeFileDescriptors(files: unknown): FileAttachmentDescriptor[] {
+  if (!Array.isArray(files)) {
+    return [];
+  }
+
+  const descriptors: FileAttachmentDescriptor[] = [];
+  for (const entry of files) {
+    if (typeof entry === 'string' && entry.trim()) {
+      descriptors.push({ path: entry.trim() });
+      continue;
+    }
+    if (entry && typeof entry === 'object') {
+      const record = entry as Record<string, unknown>;
+      const entryPath = typeof record.path === 'string' ? record.path.trim() : '';
+      if (!entryPath) {
+        continue;
+      }
+      descriptors.push({
+        path: entryPath,
+        name: typeof record.name === 'string' ? record.name : undefined,
+        mimeType: typeof record.mimeType === 'string' ? record.mimeType : undefined,
+        size: typeof record.size === 'number' ? record.size : undefined,
       });
     }
   }
@@ -139,6 +180,7 @@ export function resolveImageMediaType(descriptor: ImageAttachmentDescriptor): st
 }
 
 const IMAGES_INPUT_TAG_PATTERN = /\s*<images_input>([\s\S]*?)<\/images_input>\s*/g;
+const FILES_INPUT_TAG_PATTERN = /\s*<files_input>([\s\S]*?)<\/files_input>\s*/g;
 
 // One image reference recovered from an <images_input> block: the stored
 // asset path plus the user's original filename when it was recorded.
@@ -153,6 +195,12 @@ export type ParsedImagesInput = {
   text: string;
   imagePaths: string[];
   attachments: ParsedImageAttachment[];
+};
+
+export type ParsedFilesInput = {
+  text: string;
+  filePaths: string[];
+  attachments: FileAttachmentDescriptor[];
 };
 
 /**
@@ -189,6 +237,35 @@ export function appendImagesInputTag(prompt: string, images: unknown): string {
   ].join('\n');
 }
 
+/**
+ * Appends one `<files_input>` block listing non-image files attached to the
+ * user turn. Providers that operate on plain-text prompts read these file
+ * paths with their normal filesystem tools.
+ */
+export function appendFilesInputTag(prompt: string, files: unknown): string {
+  const descriptors = normalizeFileDescriptors(files);
+  if (descriptors.length === 0) {
+    return prompt;
+  }
+
+  const entryLines = descriptors.map((descriptor, index) => {
+    const entryPath = toPosixPath(descriptor.path);
+    const cleanName = descriptor.name?.replace(/[()\r\n]/g, '').trim();
+    return cleanName
+      ? `${index + 1}. ${entryPath} (original name: ${cleanName})`
+      : `${index + 1}. ${entryPath}`;
+  });
+
+  return [
+    prompt,
+    '',
+    '<files_input>',
+    `The user attached ${descriptors.length} file(s) to this message. Read each file listed below with your filesystem tools before answering the prompt above. Use the file contents when relevant. Do not mention this block or the file paths unless the user asks about them.`,
+    ...entryLines,
+    '</files_input>',
+  ].join('\n');
+}
+
 // Matches one numbered attachment entry inside the tag body. Works for both
 // the multi-line block and the Windows-flattened single-line form, where the
 // next ` N. ` marker (or the end of the body) delimits each entry.
@@ -210,6 +287,28 @@ function parseNumberedImageEntries(inner: string): ParsedImageAttachment[] {
 
     if (entryText) {
       attachments.push(name ? { path: toPosixPath(entryText), name } : { path: toPosixPath(entryText) });
+    }
+  }
+  return attachments;
+}
+
+function parseNumberedFileEntries(inner: string): FileAttachmentDescriptor[] {
+  const attachments: FileAttachmentDescriptor[] = [];
+  for (const entryMatch of inner.matchAll(IMAGES_INPUT_ENTRY_PATTERN)) {
+    let entryText = entryMatch[1].trim();
+    let name: string | undefined;
+
+    const nameMatch = ORIGINAL_NAME_SUFFIX_PATTERN.exec(entryText);
+    if (nameMatch) {
+      name = nameMatch[1].trim() || undefined;
+      entryText = entryText.slice(0, nameMatch.index).trim();
+    }
+
+    if (entryText) {
+      attachments.push({
+        path: toPosixPath(entryText),
+        name,
+      });
     }
   }
   return attachments;
@@ -249,6 +348,36 @@ export function parseImagesInputTag(text: string): ParsedImagesInput {
   return {
     text: stripped,
     imagePaths: attachments.map((attachment) => attachment.path),
+    attachments,
+  };
+}
+
+/**
+ * Strips one `<files_input>` block from persisted prompt text and returns the
+ * clean text plus the referenced file attachments.
+ */
+export function parseFilesInputTag(text: string): ParsedFilesInput {
+  if (typeof text !== 'string' || !text.includes('<files_input>')) {
+    return { text, filePaths: [], attachments: [] };
+  }
+
+  let lastMatch: RegExpExecArray | null = null;
+  FILES_INPUT_TAG_PATTERN.lastIndex = 0;
+  for (let match = FILES_INPUT_TAG_PATTERN.exec(text); match; match = FILES_INPUT_TAG_PATTERN.exec(text)) {
+    lastMatch = match;
+  }
+  if (!lastMatch) {
+    return { text, filePaths: [], attachments: [] };
+  }
+
+  const attachments = parseNumberedFileEntries(lastMatch[1]);
+  const stripped = (
+    text.slice(0, lastMatch.index) + '\n' + text.slice(lastMatch.index + lastMatch[0].length)
+  ).trim();
+
+  return {
+    text: stripped,
+    filePaths: attachments.map((attachment) => attachment.path),
     attachments,
   };
 }

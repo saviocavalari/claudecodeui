@@ -163,14 +163,14 @@ function ChatInterface({
     selectedFileIndex,
     renderInputWithMentions,
     selectFile,
-    attachedImages,
-    setAttachedImages,
-    uploadingImages,
-    imageErrors,
+    attachedFiles,
+    setAttachedFiles,
+    uploadingAttachments,
+    attachmentErrors,
     getRootProps,
     getInputProps,
     isDragActive,
-    openImagePicker,
+    openFilePicker,
     handleSubmit,
     queuedDraft,
     editQueuedDraft,
@@ -408,14 +408,14 @@ function ChatInterface({
           queuedDraft={queuedDraft}
           onEditQueuedDraft={editQueuedDraft}
           onDeleteQueuedDraft={deleteQueuedDraft}
-          attachedImages={attachedImages}
+          attachedFiles={attachedFiles}
           onRemoveImage={(index) =>
-            setAttachedImages((previous) =>
+            setAttachedFiles((previous) =>
               previous.filter((_, currentIndex) => currentIndex !== index),
             )
           }
-          uploadingImages={uploadingImages}
-          imageErrors={imageErrors}
+          uploadingAttachments={uploadingAttachments}
+          attachmentErrors={attachmentErrors}
           showFileDropdown={showFileDropdown}
           filteredFiles={filteredFiles}
           selectedFileIndex={selectedFileIndex}
@@ -428,7 +428,7 @@ function ChatInterface({
           frequentCommands={commandQuery ? [] : frequentCommands}
           getRootProps={getRootProps as (...args: unknown[]) => Record<string, unknown>}
           getInputProps={getInputProps as (...args: unknown[]) => Record<string, unknown>}
-          openImagePicker={openImagePicker}
+          openFilePicker={openFilePicker}
           inputHighlightRef={inputHighlightRef}
           renderInputWithMentions={renderInputWithMentions}
           textareaRef={textareaRef}

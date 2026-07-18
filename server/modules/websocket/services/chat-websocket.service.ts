@@ -5,7 +5,7 @@ import type { WebSocket } from 'ws';
 import { sessionsDb, userIdCanAccessProjectPath } from '@/modules/database/index.js';
 import { chatRunRegistry } from '@/modules/websocket/services/chat-run-registry.service.js';
 import { connectedClients, WS_OPEN_STATE } from '@/modules/websocket/services/websocket-state.service.js';
-import { getGlobalImageAssetsDir, normalizeImageDescriptors } from '@/shared/image-attachments.js';
+import { getGlobalImageAssetsDir, normalizeFileDescriptors, normalizeImageDescriptors } from '@/shared/image-attachments.js';
 import type {
   AnyRecord,
   AuthenticatedWebSocketRequest,
@@ -39,6 +39,26 @@ export function filterImagesToUploadStore(images: unknown, assetsRootOverride?: 
 
     if (!isDirectChild) {
       console.warn(`[Chat] Dropping image outside the upload store: ${descriptor.path}`);
+    }
+    return isDirectChild;
+  });
+}
+
+export function filterFilesToUploadStore(files: unknown, assetsRootOverride?: string): AnyRecord[] {
+  const assetsRoot = path.resolve(assetsRootOverride ?? getGlobalImageAssetsDir());
+
+  return normalizeFileDescriptors(files).filter((descriptor) => {
+    const resolved = path.resolve(assetsRoot, descriptor.path);
+    const relative = path.relative(assetsRoot, resolved);
+    const isDirectChild =
+      relative.length > 0 &&
+      !relative.startsWith('..') &&
+      !path.isAbsolute(relative) &&
+      !relative.includes(path.sep) &&
+      !relative.includes('/');
+
+    if (!isDirectChild) {
+      console.warn(`[Chat] Dropping file outside the upload store: ${descriptor.path}`);
     }
     return isDirectChild;
   });
@@ -219,6 +239,7 @@ async function handleChatSend(
     // Image attachments are re-validated server-side: only files inside the
     // global upload store may reach the provider runtimes' file reads.
     images: filterImagesToUploadStore(clientOptions.images),
+    files: filterFilesToUploadStore(clientOptions.files),
     sessionId: session.provider_session_id ?? undefined,
     resume: Boolean(session.provider_session_id),
     cwd: clientOptions.cwd ?? session.project_path ?? undefined,
