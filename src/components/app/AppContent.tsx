@@ -190,16 +190,61 @@ function AppContentInner() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+
+    let restingDelta = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    let pendingFrame: number | null = null;
+    const hasEditableFocus = () => {
+      const activeElement = document.activeElement;
+      return activeElement instanceof HTMLElement && activeElement.matches(
+        'input:not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"]',
+      );
+    };
     const update = () => {
-      // Only resize matters — keyboard open/close changes vv.height.
-      // Do NOT listen to scroll: on iOS Safari, scrolling content changes
-      // vv.offsetTop which would make --keyboard-height fluctuate during
-      // normal scrolling, causing the container to bounce up and down.
-      const kb = Math.max(0, window.innerHeight - vv.height);
+      // The inset we need is how much of the LAYOUT viewport's bottom edge the
+      // keyboard covers: innerHeight - (visual viewport height + its offset).
+      // With interactive-widget=resizes-content, Android shrinks innerHeight
+      // together with the visual viewport, so this stays 0 there — comparing
+      // vv.height against a pre-keyboard baseline instead double-compensates
+      // and pushes the composer to the top of the screen. On iOS innerHeight
+      // stays full-height, so the difference is the keyboard itself; offsetTop
+      // accounts for iOS scrolling the viewport while an input is focused.
+      const occluded = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (!hasEditableFocus()) {
+        // iOS PWA can report a small permanent difference (status bar /
+        // home-indicator areas); remember it so it is never treated as keyboard.
+        restingDelta = occluded;
+        document.documentElement.style.setProperty('--keyboard-height', '0px');
+        return;
+      }
+
+      const inset = Math.max(0, occluded - restingDelta);
+      const kb = inset >= 120 ? inset : 0;
       document.documentElement.style.setProperty('--keyboard-height', `${kb}px`);
     };
+    const scheduleUpdate = () => {
+      if (pendingFrame !== null) window.cancelAnimationFrame(pendingFrame);
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = null;
+        update();
+      });
+    };
+
+    update();
     vv.addEventListener('resize', update);
-    return () => vv.removeEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    document.addEventListener('focusin', scheduleUpdate);
+    document.addEventListener('focusout', scheduleUpdate);
+    window.addEventListener('orientationchange', scheduleUpdate);
+
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      document.removeEventListener('focusin', scheduleUpdate);
+      document.removeEventListener('focusout', scheduleUpdate);
+      window.removeEventListener('orientationchange', scheduleUpdate);
+      if (pendingFrame !== null) window.cancelAnimationFrame(pendingFrame);
+      document.documentElement.style.setProperty('--keyboard-height', '0px');
+    };
   }, []);
 
   return (
