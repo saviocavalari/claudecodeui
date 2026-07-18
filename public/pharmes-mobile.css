@@ -52,7 +52,7 @@ body.pwa-mode #root {
    somente no composer, evitando o espaco inferior duplicado no iPhone. */
 @media screen and (max-width: 767px) {
   body.pwa-mode .chat-composer-shell {
-    padding: 0 8px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 0 8px calc(2px + env(safe-area-inset-bottom, 0px)) !important;
     background: linear-gradient(to bottom, transparent, hsl(var(--background) / 0.96) 14px);
   }
 
@@ -114,4 +114,11 @@ body.pwa-mode #root {
     background: hsl(var(--card) / 0.9) !important;
     border-color: hsl(var(--border) / 0.72) !important;
   }
+}
+
+/* Com o teclado aberto, o proprio teclado cobre a barra de gestos do iPhone;
+   manter a safe-area vira um vao entre a caixa de texto e o teclado. O app
+   marca html.keyboard-open quando --keyboard-height > 0 (AppContent.tsx). */
+html.keyboard-open .chat-composer-shell {
+  padding-bottom: 4px !important;
 }

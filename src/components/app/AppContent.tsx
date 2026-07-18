@@ -199,6 +199,13 @@ function AppContentInner() {
         'input:not([type="checkbox"]):not([type="radio"]), textarea, [contenteditable="true"]',
       );
     };
+    const setKeyboardHeight = (px: number) => {
+      document.documentElement.style.setProperty('--keyboard-height', `${px}px`);
+      // The keyboard covers the home-indicator area, so while it is open the
+      // bottom safe-area padding becomes a gap between composer and keyboard;
+      // CSS collapses it based on this class (see pharmes-mobile.css).
+      document.documentElement.classList.toggle('keyboard-open', px > 0);
+    };
     const update = () => {
       // The inset we need is how much of the LAYOUT viewport's bottom edge the
       // keyboard covers: innerHeight - (visual viewport height + its offset).
@@ -213,13 +220,12 @@ function AppContentInner() {
         // iOS PWA can report a small permanent difference (status bar /
         // home-indicator areas); remember it so it is never treated as keyboard.
         restingDelta = occluded;
-        document.documentElement.style.setProperty('--keyboard-height', '0px');
+        setKeyboardHeight(0);
         return;
       }
 
       const inset = Math.max(0, occluded - restingDelta);
-      const kb = inset >= 120 ? inset : 0;
-      document.documentElement.style.setProperty('--keyboard-height', `${kb}px`);
+      setKeyboardHeight(inset >= 120 ? inset : 0);
     };
     const scheduleUpdate = () => {
       if (pendingFrame !== null) window.cancelAnimationFrame(pendingFrame);
