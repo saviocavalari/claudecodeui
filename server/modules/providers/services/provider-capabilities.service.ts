@@ -54,7 +54,10 @@ const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = {
   },
   codex: {
     provider: 'codex',
-    permissionModes: ['default', 'acceptEdits', 'bypassPermissions'],
+    // 'plan' maps onto a read-only sandbox plus a <plan_mode> instruction
+    // prefixed to the prompt. See mapPermissionModeToCodexOptions and
+    // applyCodexPlanMode in openai-codex.js.
+    permissionModes: ['default', 'acceptEdits', 'bypassPermissions', 'plan'],
     defaultPermissionMode: 'default',
     supportsImages: true,
     supportsAbort: true,

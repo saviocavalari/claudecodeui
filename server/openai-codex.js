@@ -191,12 +191,17 @@ function transformCodexEvent(event) {
 }
 
 /**
- * Map permission mode to Codex SDK options
- * @param {string} permissionMode - 'default', 'acceptEdits', or 'bypassPermissions'
+ * Map permission mode to Codex SDK options. Exported for tests.
+ * @param {string} permissionMode - 'default', 'acceptEdits', 'bypassPermissions', or 'plan'
  * @returns {object} - { sandboxMode, approvalPolicy }
  */
-function mapPermissionModeToCodexOptions(permissionMode) {
+export function mapPermissionModeToCodexOptions(permissionMode) {
   switch (permissionMode) {
+    case 'plan':
+      return {
+        sandboxMode: 'read-only',
+        approvalPolicy: 'never'
+      };
     case 'acceptEdits':
       return {
         sandboxMode: 'workspace-write',
@@ -214,6 +219,21 @@ function mapPermissionModeToCodexOptions(permissionMode) {
         approvalPolicy: 'untrusted'
       };
   }
+}
+
+export const CODEX_PLAN_MODE_INSTRUCTION = [
+  '<plan_mode>',
+  'Work in planning mode only. Inspect the available context as needed, but do not modify files or implement the requested changes.',
+  'Produce a concrete implementation plan and wait for the user to approve it before making changes.',
+  '</plan_mode>'
+].join('\n');
+
+export function applyCodexPlanMode(command, permissionMode) {
+  if (permissionMode !== 'plan') {
+    return command;
+  }
+
+  return `${CODEX_PLAN_MODE_INSTRUCTION}\n\n${command}`;
 }
 
 /**
@@ -291,9 +311,10 @@ export async function queryCodex(command, options = {}, ws) {
       registerSession(capturedSessionId);
     }
 
+    const modeAwareCommand = applyCodexPlanMode(command, permissionMode);
     const promptWithFiles = normalizeFileDescriptors(options.files).length > 0
-      ? appendFilesInputTag(command, options.files)
-      : command;
+      ? appendFilesInputTag(modeAwareCommand, options.files)
+      : modeAwareCommand;
     // Execute with streaming. Turns with image attachments send structured
     // input items so Codex reads the images from their local asset paths.
     const turnInput = normalizeImageDescriptors(images).length > 0
@@ -515,4 +536,4 @@ setInterval(() => {
       }
     }
   }
-}, 5 * 60 * 1000); // Every 5 minutes
+}, 5 * 60 * 1000).unref(); // Every 5 minutes; unref'd so importing tests can exit

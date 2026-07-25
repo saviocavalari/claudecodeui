@@ -99,7 +99,7 @@
       "auto": "Um classificador do modelo decide, a cada chamada de ferramenta, se aprova ou nega. Sem intervenção manual, mas mais seguro que o modo Ignorar — as negações ainda acontecem.",
       "acceptEdits": "Todos os comandos são executados automaticamente dentro do espaço de trabalho. Modo totalmente automático com execução isolada (sandbox).",
       "bypassPermissions": "Acesso total ao sistema, sem restrições. Todos os comandos são executados automaticamente com acesso total ao disco e à rede. Use com cautela.",
-      "plan": "Modo de planejamento - nenhum comando é executado"
+      "plan": "Modo de planejamento — nenhuma alteração é realizada"
     },
     "technicalDetails": "Detalhes técnicos"
   },

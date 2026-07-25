@@ -3,12 +3,14 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 
 import { sessionsDb } from '@/modules/database/index.js';
+import { parseFilesInputTag } from '@/shared/image-attachments.js';
 import {
   buildLookupMap,
   extractFirstValidJsonlData,
   findFilesRecursivelyCreatedAfter,
   normalizeSessionName,
   readFileTimestamps,
+  stripPlanModeTag,
 } from '@/shared/utils.js';
 import type { IProviderSessionSynchronizer } from '@/shared/interfaces.js';
 
@@ -186,7 +188,8 @@ export class CodexSessionSynchronizer implements IProviderSessionSynchronizer {
    *
    * Reads the `event_msg`/`user_message` payload rather than the raw
    * `response_item` user turn so injected `<environment_context>` boilerplate is
-   * never mistaken for the user's prompt.
+   * never mistaken for the user's prompt. Runtime-injected `<plan_mode>` and
+   * `<files_input>` blocks are stripped for the same reason.
    */
   private async extractFirstUserMessageFromStart(filePath: string): Promise<string | undefined> {
     try {
@@ -213,7 +216,10 @@ export class CodexSessionSynchronizer implements IProviderSessionSynchronizer {
         const message = typeof payload?.message === 'string' ? payload.message : undefined;
 
         if (eventType === 'event_msg' && payloadType === 'user_message' && message?.trim()) {
-          return message;
+          const cleaned = parseFilesInputTag(stripPlanModeTag(message)).text;
+          if (cleaned.trim()) {
+            return cleaned;
+          }
         }
       }
     } catch {

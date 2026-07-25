@@ -985,6 +985,24 @@ export function readProviderSkillMarkdownDefinitionFromContent(
 
 // ---------------------------
 //----------------- SESSION SYNCHRONIZER TITLE HELPERS ------------
+// Plan-mode instruction block the Codex runtime prefixes onto prompts in the
+// plan permission mode (see applyCodexPlanMode in server/openai-codex.js).
+// Anchored to the start of the text so a user prompt that merely mentions the
+// tag is left untouched.
+const PLAN_MODE_TAG_PREFIX_PATTERN = /^<plan_mode>[\s\S]*?<\/plan_mode>\s*/;
+
+/**
+ * Strips the injected `<plan_mode>` instruction prefix from a persisted user
+ * prompt so transcripts and session titles show only what the user typed.
+ */
+export function stripPlanModeTag(text: string): string {
+  if (typeof text !== 'string' || !text.startsWith('<plan_mode>')) {
+    return text;
+  }
+
+  return text.replace(PLAN_MODE_TAG_PREFIX_PATTERN, '');
+}
+
 /**
  * Produces a compact session title suitable for UI rendering and DB storage.
  *

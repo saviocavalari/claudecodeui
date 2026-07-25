@@ -88,6 +88,36 @@ test('Codex synchronizer titles app-created sessions from the first user message
   }
 });
 
+test('Codex synchronizer strips the injected plan-mode prefix from session titles', { concurrency: false }, async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'codex-session-sync-plan-'));
+  const workspacePath = path.join(tempRoot, 'workspace');
+  await mkdir(workspacePath, { recursive: true });
+  const restoreHomeDir = patchHomeDir(tempRoot);
+
+  try {
+    const planModePrompt = [
+      '<plan_mode>',
+      'Work in planning mode only. Inspect the available context as needed, but do not modify files or implement the requested changes.',
+      '</plan_mode>',
+      '',
+      'Fix the login redirect bug',
+    ].join('\n');
+    await writeCodexTranscript(tempRoot, 'codex-plan-1', workspacePath, planModePrompt);
+    await withIsolatedDatabase(async () => {
+      sessionsDb.createAppSession('app-plan-1', 'codex', workspacePath);
+      sessionsDb.assignProviderSessionId('app-plan-1', 'codex-plan-1');
+
+      const synchronizer = new CodexSessionSynchronizer();
+      await synchronizer.synchronize();
+
+      assert.equal(sessionsDb.getSessionById('app-plan-1')?.custom_name, 'Fix the login redirect bug');
+    });
+  } finally {
+    restoreHomeDir();
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test('Codex synchronizer skips sub-agent rollout files', { concurrency: false }, async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'codex-session-sync-subagent-'));
   const workspacePath = path.join(tempRoot, 'workspace');

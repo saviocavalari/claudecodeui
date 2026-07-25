@@ -2,10 +2,10 @@ import fsSync from 'node:fs';
 import readline from 'node:readline';
 
 import { sessionsDb } from '@/modules/database/index.js';
-import { toImageAttachments } from '@/shared/image-attachments.js';
+import { parseFilesInputTag, toImageAttachments } from '@/shared/image-attachments.js';
 import type { IProviderSessions } from '@/shared/interfaces.js';
 import type { AnyRecord, FetchHistoryOptions, FetchHistoryResult, NormalizedMessage } from '@/shared/types.js';
-import { createNormalizedMessage, generateMessageId, readObjectRecord, sliceTailPage } from '@/shared/utils.js';
+import { createNormalizedMessage, generateMessageId, readObjectRecord, sliceTailPage, stripPlanModeTag } from '@/shared/utils.js';
 
 const PROVIDER = 'codex';
 
@@ -134,14 +134,18 @@ async function getCodexSessionMessages(
         }
 
         if (entry.type === 'event_msg' && isVisibleCodexUserMessage(entry.payload as AnyRecord)) {
+          // Strip the injected plan-mode prefix and files_input block so the
+          // history shows only what the user typed; attachments surface as files.
+          const parsedFiles = parseFilesInputTag(stripPlanModeTag(entry.payload.message));
           messages.push({
             type: 'user',
             timestamp: entry.timestamp,
             message: {
               role: 'user',
-              content: entry.payload.message,
+              content: parsedFiles.text,
             },
             images: extractCodexUserImages(entry.payload as AnyRecord),
+            files: parsedFiles.attachments.length > 0 ? parsedFiles.attachments : undefined,
           });
         }
 
@@ -335,7 +339,8 @@ export class CodexSessionsProvider implements IProviderSessions {
               .join('\n')
           : String(raw.message.content || '');
       const rawImages = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : undefined;
-      if (!content.trim() && !rawImages) {
+      const rawFiles = Array.isArray(raw.files) && raw.files.length > 0 ? raw.files : undefined;
+      if (!content.trim() && !rawImages && !rawFiles) {
         return [];
       }
       return [createNormalizedMessage({
@@ -347,6 +352,7 @@ export class CodexSessionsProvider implements IProviderSessions {
         role: 'user',
         content,
         images: rawImages,
+        files: rawFiles,
       })];
     }
 
