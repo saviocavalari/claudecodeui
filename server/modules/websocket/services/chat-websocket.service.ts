@@ -241,6 +241,11 @@ async function handleChatSend(
     images: filterImagesToUploadStore(clientOptions.images),
     files: filterFilesToUploadStore(clientOptions.files),
     sessionId: session.provider_session_id ?? undefined,
+    // Stable app-level id, always known (unlike the provider session id,
+    // which a brand-new run only learns partway through). Lets a runtime
+    // register itself as abortable immediately instead of leaving a window
+    // right after spawn where `chat.abort` has nothing to address.
+    appSessionId: sessionId,
     resume: Boolean(session.provider_session_id),
     cwd: clientOptions.cwd ?? session.project_path ?? undefined,
     projectPath: session.project_path ?? clientOptions.projectPath,
@@ -284,9 +289,14 @@ async function handleChatAbort(
   }
 
   const abortFn = dependencies.abortFns[run.provider];
+  // Early in a run the provider session id may not be known yet (brand-new
+  // sessions only learn it partway through); fall back to the app session id
+  // so abort still has something to address instead of silently no-op'ing
+  // while the run keeps executing server-side.
+  const abortTargetId = run.providerSessionId ?? run.appSessionId;
   let success = false;
-  if (abortFn && run.providerSessionId) {
-    success = Boolean(await abortFn(run.providerSessionId));
+  if (abortFn && abortTargetId) {
+    success = Boolean(await abortFn(abortTargetId));
   }
 
   chatRunRegistry.completeRun(sessionId, {

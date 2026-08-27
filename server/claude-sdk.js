@@ -462,7 +462,7 @@ async function loadMcpConfig(cwd) {
  * @returns {Promise<void>}
  */
 async function queryClaudeSDK(command, options = {}, ws) {
-  const { sessionId, sessionSummary } = options;
+  const { sessionId, sessionSummary, appSessionId } = options;
   let capturedSessionId = sessionId;
   let sessionCreatedSent = false;
 
@@ -629,9 +629,16 @@ async function queryClaudeSDK(command, options = {}, ws) {
       delete process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
     }
 
-    // Track the query instance for abort capability
+    // Track the query instance for abort capability. A brand-new session has
+    // no provider session id yet (capturedSessionId stays unset until the
+    // first streamed message arrives), so also register under the app-level
+    // session id — otherwise there's a window right after query() starts
+    // where the run is already live but chat.abort has nothing to address.
     if (capturedSessionId) {
       addSession(capturedSessionId, queryInstance, ws);
+    }
+    if (appSessionId && appSessionId !== capturedSessionId) {
+      addSession(appSessionId, queryInstance, ws);
     }
 
     // Process streaming messages
@@ -682,10 +689,18 @@ async function queryClaudeSDK(command, options = {}, ws) {
     if (capturedSessionId) {
       removeSession(capturedSessionId);
     }
+    if (appSessionId && appSessionId !== capturedSessionId) {
+      removeSession(appSessionId);
+    }
 
     // Send the terminal completion event — skipped for aborted runs, whose
     // terminal `complete` (aborted: true) was already sent by abort-session.
-    const wasAborted = capturedSessionId ? abortedSessionIds.delete(capturedSessionId) : false;
+    // Checked under both ids: an abort fired before capturedSessionId existed
+    // (brand-new session) marks the appSessionId, not the provider one.
+    const wasAborted = Boolean(
+      (capturedSessionId && abortedSessionIds.delete(capturedSessionId))
+      || (appSessionId && abortedSessionIds.delete(appSessionId))
+    );
     if (!wasAborted) {
       ws.send(createCompleteMessage({ provider: 'claude', sessionId: capturedSessionId || sessionId || null, exitCode: 0 }));
     }
@@ -705,8 +720,15 @@ async function queryClaudeSDK(command, options = {}, ws) {
     if (capturedSessionId) {
       removeSession(capturedSessionId);
     }
+    if (appSessionId && appSessionId !== capturedSessionId) {
+      removeSession(appSessionId);
+    }
 
-    const wasAborted = capturedSessionId ? abortedSessionIds.delete(capturedSessionId) : false;
+    // Checked under both ids — see the matching comment in the success path.
+    const wasAborted = Boolean(
+      (capturedSessionId && abortedSessionIds.delete(capturedSessionId))
+      || (appSessionId && abortedSessionIds.delete(appSessionId))
+    );
     if (wasAborted) {
       // The abort already produced the terminal complete; a generator throw
       // caused by interrupt() is expected noise, not a user-facing error.
