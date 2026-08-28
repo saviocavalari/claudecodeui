@@ -13,6 +13,7 @@ import { useDropzone } from 'react-dropzone';
 
 import { authenticatedFetch } from '../../../utils/api';
 import type { MarkSessionProcessing } from '../../../hooks/useSessionProtection';
+import { markSessionWorking } from '../../../utils/pageTitleNotification';
 import { grantClaudeToolPermission } from '../utils/chatPermissions';
 import {
   clearQueuedMessage,
@@ -825,6 +826,7 @@ export function useChatComposerState({
         statusText: null,
         canInterrupt: true,
       });
+      markSessionWorking(targetSessionId);
 
       setIsUserScrolledUp(false);
       setTimeout(() => scrollToBottom(), 100);

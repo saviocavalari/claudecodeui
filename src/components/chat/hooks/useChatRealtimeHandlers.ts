@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
 import type { ServerEvent } from '../../../contexts/WebSocketContext';
-import { showCompletionTitleIndicator } from '../../../utils/pageTitleNotification';
+import { markSessionSettled, markSessionWorking, showCompletionTitleIndicator } from '../../../utils/pageTitleNotification';
 import { playChatCompletionSound, playNotificationSound } from '../../../utils/notificationSound';
 import type { MarkSessionIdle, MarkSessionProcessing } from '../../../hooks/useSessionProtection';
 import type { PendingPermissionRequest } from '../types/types';
@@ -117,12 +117,17 @@ export function useChatRealtimeHandlers({
 
           if (msg.isProcessing) {
             onSessionProcessing?.(sid);
+            // Covers reconnects/reloads: the send-time mark above only fires
+            // in the tab that sent the message, so a tab that opens (or
+            // comes back) mid-run needs this ack to learn the run is real.
+            markSessionWorking(sid);
           } else {
             // Idle ack: ignore it if a newer request started after the
             // subscribe was sent — the ack describes the older state.
             onSessionIdle?.(sid, {
               ifStartedBefore: statusCheckSentAtRef.current.get(sid),
             });
+            markSessionSettled(sid);
           }
 
           const isViewedSession = sid === activeViewSessionId;
@@ -147,6 +152,7 @@ export function useChatRealtimeHandlers({
             // Surface the failure in the conversation and stop the spinner —
             // the run never started (or was rejected), so no `complete` follows.
             onSessionIdle?.(sid);
+            markSessionSettled(sid);
             sessionStore.appendRealtime(sid, {
               id: `protocol_error_${Date.now()}`,
               sessionId: sid,
@@ -237,6 +243,10 @@ export function useChatRealtimeHandlers({
           // indicator derives from the processing map, so deleting the entry
           // hides it immediately and atomically.
           onSessionIdle?.(sid);
+          // Only safe to flip the tab title from "working" to "done" once no
+          // other session is still running — otherwise this one finishing
+          // would wipe the still-accurate working marker for another.
+          const allSessionsSettled = markSessionSettled(sid);
           if (sid === activeViewSessionId) {
             pendingPermissionRequestsRef.current = [];
             setPendingPermissionRequests([]);
@@ -250,7 +260,9 @@ export function useChatRealtimeHandlers({
 
           // Celebrate only successful runs (failed runs end with success: false).
           if (msg.success !== false) {
-            showCompletionTitleIndicator();
+            if (allSessionsSettled) {
+              showCompletionTitleIndicator();
+            }
             void playChatCompletionSound();
           }
 
