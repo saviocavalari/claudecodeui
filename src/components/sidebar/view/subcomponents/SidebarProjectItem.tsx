@@ -1,8 +1,19 @@
 import { useState } from 'react';
-import { Check, ChevronDown, ChevronRight, Edit3, FolderInput, SmilePlus, Star, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Edit3,
+  FolderInput,
+  MoreVertical,
+  SmilePlus,
+  Star,
+  Trash2,
+  X,
+} from 'lucide-react';
 import type { TFunction } from 'i18next';
 
-import { Button } from '../../../../shared/view/ui';
+import { ActionMenu, Button } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
 import { useAuth } from '../../../auth/context/AuthContext';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
@@ -138,6 +149,35 @@ export default function SidebarProjectItem({
     toggleProject();
   };
 
+  const projectActionItems = [
+    {
+      key: 'emoji',
+      label: t('tooltips.setEmoji'),
+      icon: SmilePlus,
+      onSelect: () => setShowEmojiModal(true),
+    },
+    {
+      key: 'folder',
+      label: t('tooltips.setFolder'),
+      icon: FolderInput,
+      onSelect: () => setShowFolderModal(true),
+    },
+    {
+      key: 'rename',
+      label: t('projects.renameProject'),
+      icon: Edit3,
+      onSelect: () => onStartEditingProject(project),
+    },
+    {
+      key: 'delete',
+      label: t('projects.deleteProject'),
+      icon: Trash2,
+      onSelect: () => onDeleteProject(project),
+      isDanger: true,
+      showDividerBefore: true,
+    },
+  ];
+
   return (
     <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
       <div className="md:group group">
@@ -256,49 +296,18 @@ export default function SidebarProjectItem({
                 ) : (
                   <>
                     {isAdmin && (
-                      <>
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setShowEmojiModal(true);
-                          }}
-                          title={t('tooltips.setEmoji')}
-                        >
-                          <SmilePlus className="h-4 w-4 text-muted-foreground" />
-                        </button>
-
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 active:scale-90"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setShowFolderModal(true);
-                          }}
-                          title={t('tooltips.setFolder')}
-                        >
-                          <FolderInput className="h-4 w-4 text-muted-foreground" />
-                        </button>
-
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-500/10 active:scale-90 dark:border-red-800 dark:bg-red-900/30"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onDeleteProject(project);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
-                        </button>
-
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 active:scale-90 dark:border-primary/30 dark:bg-primary/20"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onStartEditingProject(project);
-                          }}
-                        >
-                          <Edit3 className="h-4 w-4 text-primary" />
-                        </button>
-                      </>
+                      <div onClick={(event) => event.stopPropagation()}>
+                        <ActionMenu
+                          label={t('projects.projectActions')}
+                          ariaLabel={t('projects.projectActionsFor', { project: project.displayName })}
+                          items={projectActionItems}
+                          icon={MoreVertical}
+                          iconOnly
+                          size="icon"
+                          variant="ghost"
+                          triggerClassName="h-8 w-8 rounded-lg border border-border bg-muted/40 p-0 active:scale-90"
+                        />
+                      </div>
                     )}
 
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/30">
@@ -315,159 +324,130 @@ export default function SidebarProjectItem({
           </div>
         </div>
 
-        <Button
-          variant="ghost"
-          className={cn(
-            'relative hidden h-auto w-full items-center p-2 font-normal md:flex hover:bg-accent/50',
-            isSelected && 'bg-accent text-accent-foreground',
-            isStarred &&
-              !isSelected &&
-              'bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/20',
-          )}
-          onClick={selectAndToggleProject}
-        >
-          {/* Compact single row; actions overlay the right side only on hover. */}
-          <div className="flex w-full items-center gap-3">
-            <div
-              className={cn(
-                'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded transition-all duration-200',
-                isAdmin && 'cursor-pointer',
-                isStarred
-                  ? isAdmin && 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
-                  : cn('opacity-40', isAdmin && 'hover:opacity-100 hover:bg-accent'),
-              )}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (isAdmin) toggleStarProject();
-              }}
-              title={
-                isAdmin
-                  ? isStarred
-                    ? t('tooltips.removeFromFavorites')
-                    : t('tooltips.addToFavorites')
-                  : undefined
-              }
-            >
-              <Star
-                className={cn(
-                  'w-3 h-3 transition-colors',
-                  isStarred
-                    ? 'text-yellow-600 dark:text-yellow-400 fill-current'
-                    : 'text-muted-foreground',
-                )}
-              />
-            </div>
-
-            {isEditing ? (
-              <input
-                type="text"
-                value={editingName}
-                onChange={(event) => onEditingNameChange(event.target.value)}
-                className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
-                placeholder={t('projects.projectNamePlaceholder')}
-                autoFocus
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    saveProjectName();
-                  }
-                  if (event.key === 'Escape') {
-                    onCancelEditingProject();
-                  }
-                }}
-              />
-            ) : (
+        <div className="relative hidden md:block">
+          <Button
+            variant="ghost"
+            className={cn(
+              'h-auto w-full items-center p-2 font-normal hover:bg-accent/50',
+              !isEditing && isAdmin && 'pr-10',
+              isSelected && 'bg-accent text-accent-foreground',
+              isStarred &&
+                !isSelected &&
+                'bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/20',
+            )}
+            onClick={selectAndToggleProject}
+          >
+            <div className="flex w-full items-center gap-3">
               <div
-                className="min-w-0 flex-1 truncate text-left text-sm font-medium text-foreground"
-                title={project.displayName}
-              >
-                {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
-                {project.displayName}
-              </div>
-            )}
-
-            {!isEditing && (
-              <span className="flex-shrink-0 text-xs text-muted-foreground">
-                {sessionCountDisplay}
-              </span>
-            )}
-
-            {isEditing ? (
-              <div className="flex flex-shrink-0 items-center gap-1">
-                <div
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-green-600 transition-colors hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-900/20"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    saveProjectName();
-                  }}
-                >
-                  <Check className="h-3 w-3" />
-                </div>
-                <div
-                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-gray-800"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onCancelEditingProject();
-                  }}
-                >
-                  <X className="h-3 w-3" />
-                </div>
-              </div>
-            ) : (
-              <div className="flex-shrink-0">
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                className={cn(
+                  'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded transition-all duration-200',
+                  isAdmin && 'cursor-pointer',
+                  isStarred
+                    ? isAdmin && 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                    : cn('opacity-40', isAdmin && 'hover:opacity-100 hover:bg-accent'),
                 )}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isAdmin) toggleStarProject();
+                }}
+                title={
+                  isAdmin
+                    ? isStarred
+                      ? t('tooltips.removeFromFavorites')
+                      : t('tooltips.addToFavorites')
+                    : undefined
+                }
+              >
+                <Star
+                  className={cn(
+                    'w-3 h-3 transition-colors',
+                    isStarred
+                      ? 'text-yellow-600 dark:text-yellow-400 fill-current'
+                      : 'text-muted-foreground',
+                  )}
+                />
               </div>
-            )}
-          </div>
+
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editingName}
+                  onChange={(event) => onEditingNameChange(event.target.value)}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
+                  placeholder={t('projects.projectNamePlaceholder')}
+                  autoFocus
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      saveProjectName();
+                    }
+                    if (event.key === 'Escape') {
+                      onCancelEditingProject();
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  className="min-w-0 flex-1 truncate text-left text-sm font-medium text-foreground"
+                  title={project.displayName}
+                >
+                  {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
+                  {project.displayName}
+                </div>
+              )}
+
+              {!isEditing && (
+                <span className="flex-shrink-0 text-xs text-muted-foreground">
+                  {sessionCountDisplay}
+                </span>
+              )}
+
+              {isEditing ? (
+                <div className="flex flex-shrink-0 items-center gap-1">
+                  <div
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-green-600 transition-colors hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-900/20"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      saveProjectName();
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </div>
+                  <div
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-gray-800"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCancelEditingProject();
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-shrink-0">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  )}
+                </div>
+              )}
+            </div>
+          </Button>
 
           {!isEditing && isAdmin && (
-            <div className="absolute right-8 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md bg-background/95 px-1 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
-                <div
-                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setShowEmojiModal(true);
-                  }}
-                  title={t('tooltips.setEmoji')}
-                >
-                  <SmilePlus className="h-3 w-3" />
-                </div>
-                <div
-                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setShowFolderModal(true);
-                  }}
-                  title={t('tooltips.setFolder')}
-                >
-                  <FolderInput className="h-3 w-3" />
-                </div>
-                <div
-                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-accent group-hover:opacity-100"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onStartEditingProject(project);
-                  }}
-                  title={t('tooltips.renameProject')}
-                >
-                  <Edit3 className="h-3 w-3" />
-                </div>
-                <div
-                  className="touch:opacity-100 flex h-6 w-6 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-200 hover:bg-red-50 group-hover:opacity-100 dark:hover:bg-red-900/20"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDeleteProject(project);
-                  }}
-                  title={t('tooltips.deleteProject')}
-                >
-                  <Trash2 className="h-3 w-3 text-red-600 dark:text-red-400" />
-                </div>
-            </div>
+            <ActionMenu
+              label={t('projects.projectActions')}
+              ariaLabel={t('projects.projectActionsFor', { project: project.displayName })}
+              items={projectActionItems}
+              icon={MoreVertical}
+              iconOnly
+              size="icon"
+              variant="ghost"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              triggerClassName="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-60 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            />
           )}
-        </Button>
+        </div>
       </div>
 
       <SidebarProjectSessions

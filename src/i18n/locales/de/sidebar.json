@@ -2,6 +2,8 @@
   "projects": {
     "title": "Projekte",
     "newProject": "Neues Projekt",
+    "projectActions": "Projektoptionen",
+    "projectActionsFor": "Optionen für Projekt {{project}}",
     "deleteProject": "Projekt entfernen",
     "renameProject": "Projekt umbenennen",
     "noProjects": "Keine Projekte gefunden",

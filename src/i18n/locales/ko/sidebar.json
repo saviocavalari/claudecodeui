@@ -2,6 +2,8 @@
   "projects": {
     "title": "프로젝트",
     "newProject": "새 프로젝트",
+    "projectActions": "프로젝트 옵션",
+    "projectActionsFor": "{{project}} 프로젝트 옵션",
     "deleteProject": "프로젝트 제거",
     "renameProject": "프로젝트 이름 변경",
     "noProjects": "프로젝트가 없습니다",

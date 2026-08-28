@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Loader2, type LucideIcon } from 'lucide-react';
 
 import { cn } from '../../../lib/utils';
@@ -24,6 +25,7 @@ type ActionMenuProps = {
   label: string;
   items: ActionMenuItem[];
   icon?: LucideIcon;
+  iconOnly?: boolean;
   ariaLabel?: string;
   align?: 'left' | 'right';
   variant?: ButtonVariant;
@@ -37,6 +39,7 @@ export default function ActionMenu({
   label,
   items,
   icon: TriggerIcon,
+  iconOnly = false,
   ariaLabel,
   align = 'right',
   variant = 'outline',
@@ -55,6 +58,7 @@ export default function ActionMenu({
   const restoreFocusRef = React.useRef(false);
   const wasOpenRef = React.useRef(false);
   const menuId = React.useId();
+  const [menuPosition, setMenuPosition] = React.useState<{ left: number; top: number } | null>(null);
 
   React.useEffect(() => {
     if (!isOpen) {
@@ -63,7 +67,11 @@ export default function ActionMenu({
 
     const closeOnOutsideClick = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (rootRef.current && !rootRef.current.contains(target)) {
+      if (
+        rootRef.current
+        && !rootRef.current.contains(target)
+        && !menuRef.current?.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -82,6 +90,56 @@ export default function ActionMenu({
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [isOpen]);
+
+  React.useLayoutEffect(() => {
+    if (!isOpen) {
+      setMenuPosition(null);
+      return;
+    }
+
+    const positionMenu = () => {
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) {
+        return;
+      }
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const gap = 8;
+      const viewportPadding = 8;
+      const availableBelow = window.innerHeight - triggerRect.bottom - gap;
+      const availableAbove = triggerRect.top - gap;
+      const shouldOpenAbove = availableBelow < menuRect.height && availableAbove > availableBelow;
+      const preferredLeft = align === 'right'
+        ? triggerRect.right - menuRect.width
+        : triggerRect.left;
+      const maximumLeft = Math.max(
+        viewportPadding,
+        window.innerWidth - menuRect.width - viewportPadding,
+      );
+      const left = Math.min(
+        Math.max(viewportPadding, preferredLeft),
+        maximumLeft,
+      );
+      const top = shouldOpenAbove
+        ? Math.max(viewportPadding, triggerRect.top - menuRect.height - gap)
+        : Math.min(
+            triggerRect.bottom + gap,
+            window.innerHeight - menuRect.height - viewportPadding,
+          );
+
+      setMenuPosition({ left, top });
+    };
+
+    positionMenu();
+    window.addEventListener('resize', positionMenu);
+    window.addEventListener('scroll', positionMenu, true);
+    return () => {
+      window.removeEventListener('resize', positionMenu);
+      window.removeEventListener('scroll', positionMenu, true);
+    };
+  }, [align, isOpen]);
 
   // Move focus into the menu on open and back to the trigger on a keyboard or
   // selection close, so keyboard and screen-reader navigation match the menu role.
@@ -113,77 +171,85 @@ export default function ActionMenu({
     item.onSelect();
   };
 
-  return (
-    <div ref={rootRef} className={cn('relative inline-flex', className)}>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant={variant}
-        size={size}
-        className={triggerClassName}
-        disabled={disabled}
-        aria-label={ariaLabel || label}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? menuId : undefined}
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        {TriggerIcon && <TriggerIcon className="h-4 w-4" />}
-        <span>{label}</span>
-        <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
-      </Button>
-
-      {isOpen && (
-        <div
-          ref={menuRef}
-          id={menuId}
-          role="menu"
-          tabIndex={-1}
-          className={cn(
-            'absolute top-full z-50 mt-2 min-w-[220px] rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg',
-            'animate-in fade-in-0 zoom-in-95',
-            align === 'right' ? 'right-0' : 'left-0',
-          )}
-        >
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <React.Fragment key={item.key}>
-                {item.showDividerBefore && <div className="mx-2 my-1 h-px bg-border" />}
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={item.disabled || item.loading}
-                  onClick={() => runItem(item)}
-                  className={cn(
-                    'flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors',
-                    'focus:bg-accent focus:outline-none',
-                    item.disabled || item.loading
-                      ? 'cursor-not-allowed opacity-50'
-                      : item.isDanger
-                        ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950'
-                        : 'hover:bg-accent',
-                  )}
-                >
-                  {item.loading ? (
-                    <Loader2 className="mt-0.5 h-4 w-4 flex-shrink-0 animate-spin" />
-                  ) : (
-                    Icon && <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium leading-5">{item.label}</span>
-                    {item.description && (
-                      <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
-                        {item.description}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </React.Fragment>
-            );
-          })}
-        </div>
+  const menu = isOpen && (
+    <div
+      ref={menuRef}
+      id={menuId}
+      role="menu"
+      tabIndex={-1}
+      style={menuPosition ?? { left: 0, top: 0, visibility: 'hidden' }}
+      className={cn(
+        'fixed z-50 min-w-[220px] rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg',
+        'animate-in fade-in-0 zoom-in-95',
       )}
+    >
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <React.Fragment key={item.key}>
+            {item.showDividerBefore && <div className="mx-2 my-1 h-px bg-border" />}
+            <button
+              type="button"
+              role="menuitem"
+              disabled={item.disabled || item.loading}
+              onClick={() => runItem(item)}
+              className={cn(
+                'flex w-full items-start gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                'focus:bg-accent focus:outline-none',
+                item.disabled || item.loading
+                  ? 'cursor-not-allowed opacity-50'
+                  : item.isDanger
+                    ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950'
+                    : 'hover:bg-accent',
+              )}
+            >
+              {item.loading ? (
+                <Loader2 className="mt-0.5 h-4 w-4 flex-shrink-0 animate-spin" />
+              ) : (
+                Icon && <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium leading-5">{item.label}</span>
+                {item.description && (
+                  <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
+                    {item.description}
+                  </span>
+                )}
+              </span>
+            </button>
+          </React.Fragment>
+        );
+      })}
     </div>
+  );
+
+  return (
+    <>
+      <div ref={rootRef} className={cn('relative inline-flex', className)}>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant={variant}
+          size={size}
+          className={triggerClassName}
+          disabled={disabled}
+          aria-label={ariaLabel || label}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? menuId : undefined}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {TriggerIcon && <TriggerIcon className="h-4 w-4" />}
+          {!iconOnly && (
+            <>
+              <span>{label}</span>
+              <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+            </>
+          )}
+        </Button>
+      </div>
+
+      {menu && createPortal(menu, document.body)}
+    </>
   );
 }

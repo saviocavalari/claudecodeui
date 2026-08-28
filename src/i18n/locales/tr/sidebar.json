@@ -2,6 +2,8 @@
   "projects": {
     "title": "Projeler",
     "newProject": "Yeni Proje",
+    "projectActions": "Proje seçenekleri",
+    "projectActionsFor": "{{project}} projesinin seçenekleri",
     "deleteProject": "Projeyi Kaldır",
     "renameProject": "Projeyi Yeniden Adlandır",
     "noProjects": "Proje bulunamadı",

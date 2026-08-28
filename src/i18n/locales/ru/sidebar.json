@@ -2,6 +2,8 @@
   "projects": {
     "title": "Проекты",
     "newProject": "Новый проект",
+    "projectActions": "Параметры проекта",
+    "projectActionsFor": "Параметры проекта {{project}}",
     "deleteProject": "Убрать проект",
     "renameProject": "Переименовать проект",
     "noProjects": "Проекты не найдены",

@@ -2,6 +2,8 @@
   "projects": {
     "title": "專案",
     "newProject": "新增專案",
+    "projectActions": "專案選項",
+    "projectActionsFor": "專案 {{project}} 的選項",
     "deleteProject": "移除專案",
     "renameProject": "重新命名專案",
     "noProjects": "找不到專案",
