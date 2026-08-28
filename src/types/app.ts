@@ -41,6 +41,9 @@ export interface ProjectSession {
   // Tags the session with the owning project's DB `projectId` so UI handlers
   // (session switching, sidebar focus, etc.) can match against selectedProject.
   __projectId?: string;
+  // Who started the session (first letter shown as a sidebar badge). Null for
+  // sessions created before this field existed, or discovered on disk.
+  createdByUsername?: string | null;
   [key: string]: unknown;
 }
 

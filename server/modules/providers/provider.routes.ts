@@ -555,7 +555,10 @@ router.post(
       }
     }
 
-    const result = sessionsService.createAppSession(provider, projectPath);
+    const result = sessionsService.createAppSession(provider, projectPath, {
+      userId: user?.id,
+      username: typeof user?.username === 'string' ? user.username : null,
+    });
 
     activityLogDb.record({
       userId: user?.id,

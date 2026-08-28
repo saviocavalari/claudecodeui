@@ -407,6 +407,19 @@ const addProviderSessionIdMapping = (db: Database): void => {
   `);
 };
 
+/**
+ * Who started each session, for the sidebar's creator badge. Existing rows
+ * are left NULL — there is no reliable way to attribute sessions created
+ * before this column existed, and the UI treats NULL as "unknown".
+ */
+const addSessionCreatorColumns = (db: Database): void => {
+  const sessionsTableInfo = getTableInfo(db, 'sessions');
+  const columnNames = sessionsTableInfo.map((column) => column.name);
+
+  addColumnToTableIfNotExists(db, 'sessions', columnNames, 'created_by_user_id', 'INTEGER');
+  addColumnToTableIfNotExists(db, 'sessions', columnNames, 'created_by_username', 'TEXT');
+};
+
 const ensureProjectsForSessionPaths = (db: Database): void => {
   if (!tableExists(db, 'sessions')) {
     return;
@@ -466,6 +479,7 @@ export const runMigrations = (db: Database) => {
     rebuildSessionsTableWithProjectSchema(db);
     migrateLegacySessionNames(db);
     addProviderSessionIdMapping(db);
+    addSessionCreatorColumns(db);
     ensureProjectsForSessionPaths(db);
 
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id)');

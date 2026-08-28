@@ -155,6 +155,13 @@ CREATE TABLE IF NOT EXISTS sessions (
     isArchived BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- Who started this session, captured once at creation time (NULL for
+    -- sessions that predate this column, or discovered on disk rather than
+    -- started through the app). Denormalized username alongside the id so the
+    -- sidebar can show it without joining users (and it survives account
+    -- deletion, unlike a bare id).
+    created_by_user_id INTEGER,
+    created_by_username TEXT,
     PRIMARY KEY (session_id),
     FOREIGN KEY (project_path) REFERENCES projects(project_path)
     ON DELETE SET NULL

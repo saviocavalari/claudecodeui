@@ -1,6 +1,7 @@
 import { memo, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useAuth } from '../../../auth/context/AuthContext';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
 import type {
   ChatMessage,
@@ -65,6 +66,8 @@ function UserFileAttachments({ files }: { files: NonNullable<ChatMessage['files'
 
 const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, showRawParameters, showThinking, selectedProject, provider }: MessageComponentProps) => {
   const { t } = useTranslation('chat');
+  const { user } = useAuth();
+  const userInitial = user?.username?.trim()?.[0]?.toUpperCase() || 'U';
   const isGrouped = prevMessage && prevMessage.type === message.type &&
     ((prevMessage.type === 'assistant') ||
       (prevMessage.type === 'user') ||
@@ -136,7 +139,7 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
           </div>
           {!isGrouped && (
             <div className="hidden h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm text-white sm:flex">
-              U
+              {userInitial}
             </div>
           )}
         </div>

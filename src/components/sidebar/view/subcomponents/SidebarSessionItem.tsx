@@ -34,6 +34,26 @@ type SidebarSessionItemProps = {
 };
 
 /**
+ * Small corner badge on the provider icon showing who started the session
+ * (first letter of their login). Renders nothing for sessions with no
+ * recorded creator — old rows, or ones discovered on disk.
+ */
+const SessionCreatorBadge = ({ username }: { username?: string | null }) => {
+  const initial = username?.trim()?.[0]?.toUpperCase();
+  if (!initial) {
+    return null;
+  }
+
+  return (
+    <Tooltip content={username as string} position="top">
+      <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-primary text-[8px] font-medium leading-none text-primary-foreground">
+        {initial}
+      </span>
+    </Tooltip>
+  );
+};
+
+/**
  * Compact relative time for sidebar rows:
  * <1m, Xm, Xhr, Xd.
  */
@@ -161,11 +181,12 @@ export default function SidebarSessionItem({
           <div className="flex items-center gap-2">
             <div
               className={cn(
-                'w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0',
+                'relative w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0',
                 isSelected ? 'bg-primary/10' : 'bg-muted/50',
               )}
             >
               <SessionProviderLogo provider={session.__provider} className="h-3 w-3" />
+              <SessionCreatorBadge username={session.createdByUsername} />
             </div>
 
             <div className="min-w-0 flex-1">
@@ -231,11 +252,12 @@ export default function SidebarSessionItem({
           <div className="flex w-full min-w-0 items-center gap-2">
             <div
               className={cn(
-                'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md',
+                'relative flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md',
                 isSelected ? 'bg-primary/10' : 'bg-muted/50',
               )}
             >
               <SessionProviderLogo provider={session.__provider} className="h-3 w-3" />
+              <SessionCreatorBadge username={session.createdByUsername} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

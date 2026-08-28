@@ -13,10 +13,12 @@ type SessionRow = {
   isArchived: number;
   created_at: string;
   updated_at: string;
+  created_by_user_id: number | null;
+  created_by_username: string | null;
 };
 
 const SESSION_ROW_COLUMNS =
-  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, pending_context, isArchived, created_at, updated_at';
+  'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, pending_context, isArchived, created_at, updated_at, created_by_user_id, created_by_username';
 
 const SQLITE_UTC_TIMESTAMP_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
@@ -152,16 +154,23 @@ export const sessionsDb = {
    * stays NULL until the provider runtime announces its own id and
    * `assignProviderSessionId` records the mapping.
    */
-  createAppSession(sessionId: string, provider: string, projectPath: string): string {
+  createAppSession(
+    sessionId: string,
+    provider: string,
+    projectPath: string,
+    createdBy?: { userId?: number | string | null; username?: string | null }
+  ): string {
     const db = getConnection();
     const normalizedProjectPath = normalizeProjectPathForProvider(provider, projectPath);
+    const createdByUserId = Number.isFinite(Number(createdBy?.userId)) ? Number(createdBy?.userId) : null;
+    const createdByUsername = createdBy?.username ?? null;
 
     projectsDb.createProjectPath(normalizedProjectPath);
 
     db.prepare(
-      `INSERT INTO sessions (session_id, provider, provider_session_id, custom_name, project_path, jsonl_path, isArchived, created_at, updated_at)
-       VALUES (?, ?, NULL, NULL, ?, NULL, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-    ).run(sessionId, provider, normalizedProjectPath);
+      `INSERT INTO sessions (session_id, provider, provider_session_id, custom_name, project_path, jsonl_path, isArchived, created_at, updated_at, created_by_user_id, created_by_username)
+       VALUES (?, ?, NULL, NULL, ?, NULL, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)`
+    ).run(sessionId, provider, normalizedProjectPath, createdByUserId, createdByUsername);
 
     return sessionId;
   },
