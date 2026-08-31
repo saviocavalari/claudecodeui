@@ -462,6 +462,25 @@ export const runMigrations = (db: Database) => {
       'role',
       "TEXT NOT NULL DEFAULT 'member'"
     );
+    const hadGlobalProviderPermission = userColumnNames.includes(
+      'can_use_global_provider_account'
+    );
+    addColumnToTableIfNotExists(
+      db,
+      'users',
+      userColumnNames,
+      'can_use_global_provider_account',
+      'BOOLEAN NOT NULL DEFAULT 0'
+    );
+    if (!hadGlobalProviderPermission) {
+      // Preserve the old behavior for existing owners while denying existing
+      // members until an administrator explicitly grants access.
+      db.exec(`
+        UPDATE users
+        SET can_use_global_provider_account = 1
+        WHERE role = 'admin'
+      `);
+    }
 
     db.exec(APP_CONFIG_TABLE_SCHEMA_SQL);
     db.exec(USER_NOTIFICATION_PREFERENCES_TABLE_SCHEMA_SQL);
@@ -511,6 +530,15 @@ export const runMigrations = (db: Database) => {
         console.log('Running migration: Promoting first user to admin role');
         db.prepare("UPDATE users SET role = 'admin' WHERE id = ?").run(firstUser.id);
       }
+    }
+    if (!hadGlobalProviderPermission) {
+      // The first-user promotion above can happen in the same migration when
+      // upgrading a legacy single-user database.
+      db.exec(`
+        UPDATE users
+        SET can_use_global_provider_account = 1
+        WHERE role = 'admin'
+      `);
     }
 
     db.exec('DROP INDEX IF EXISTS idx_session_names_lookup');

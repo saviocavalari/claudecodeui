@@ -161,6 +161,7 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
 
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginProvider, setLoginProvider] = useState<ActiveLoginProvider>('');
+  const [loginCommand, setLoginCommand] = useState<string | undefined>(undefined);
   const {
     providerAuthStatus,
     checkProviderAuthStatus,
@@ -222,8 +223,9 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
     }
   }, []);
 
-  const openLoginForProvider = useCallback((provider: AgentProvider) => {
+  const openLoginForProvider = useCallback((provider: AgentProvider, customCommand?: string) => {
     setLoginProvider(provider);
+    setLoginCommand(customCommand);
     setShowLoginModal(true);
   }, []);
 
@@ -240,6 +242,9 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
       }
 
       setSaveStatus(authStatus.authenticated ? 'success' : 'error');
+      window.dispatchEvent(new CustomEvent('provider-auth-changed', {
+        detail: { provider: loginProvider },
+      }));
     })();
   }, [checkProviderAuthStatus, loginProvider]);
 
@@ -309,6 +314,17 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
     void loadSettings();
     void refreshProviderAuthStatuses();
   }, [initialTab, isOpen, loadSettings, refreshProviderAuthStatuses]);
+
+  useEffect(() => {
+    const handleProviderAuthChanged = (event: Event) => {
+      const provider = (event as CustomEvent<{ provider?: AgentProvider }>).detail?.provider;
+      if (provider) {
+        void checkProviderAuthStatus(provider);
+      }
+    };
+    window.addEventListener('provider-auth-changed', handleProviderAuthChanged);
+    return () => window.removeEventListener('provider-auth-changed', handleProviderAuthChanged);
+  }, [checkProviderAuthStatus]);
 
   useEffect(() => {
     setNotificationSoundEnabled(notificationPreferences.channels.sound);
@@ -399,6 +415,7 @@ export function useSettingsController({ isOpen, initialTab }: UseSettingsControl
     showLoginModal,
     setShowLoginModal,
     loginProvider,
+    loginCommand,
     handleLoginComplete,
   };
 }

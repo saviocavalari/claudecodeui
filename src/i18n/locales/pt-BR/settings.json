@@ -368,6 +368,19 @@
       "button": "Entrar",
       "reLoginButton": "Entrar novamente"
     },
+    "multipleAccounts": {
+      "title": "Contas conectadas",
+      "description": "Escolha a conta ativa ou conecte outras contas para alternar quando o limite for atingido.",
+      "add": "Adicionar conta",
+      "loading": "Carregando contas...",
+      "active": "Em uso",
+      "cooldown": "Limite atingido",
+      "use": "Usar esta conta",
+      "login": "Entrar novamente",
+      "remove": "Remover conta",
+      "autoSwitch": "Trocar automaticamente ao atingir o limite",
+      "autoSwitchDescription": "O CloudCLI tenta a próxima conta conectada e repete a solicitação atual."
+    },
     "error": "Erro: {{error}}"
   },
   "permissions": {

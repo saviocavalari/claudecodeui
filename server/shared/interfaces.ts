@@ -7,6 +7,7 @@ import type {
   ProviderSkill,
   ProviderSkillListOptions,
   ProviderAuthStatus,
+  ProviderAuthOptions,
   ProviderChangeActiveModelInput,
   ProviderCurrentActiveModel,
   ProviderModelsDefinition,
@@ -86,7 +87,7 @@ export interface IProviderAuth {
   /**
    * Checks whether the provider is installed and has usable credentials.
    */
-  getStatus(): Promise<ProviderAuthStatus>;
+  getStatus(options?: ProviderAuthOptions): Promise<ProviderAuthStatus>;
 }
 
 // ---------------------------

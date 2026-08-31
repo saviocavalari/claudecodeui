@@ -98,6 +98,16 @@ export function useShellConnection({
         return;
       }
 
+      if (message.type === 'error') {
+        const errorMessage =
+          typeof message.message === 'string'
+            ? message.message
+            : 'Não foi possível iniciar o terminal.';
+        terminalRef.current?.write(
+          `\r\n\x1b[31mErro: ${errorMessage}\x1b[0m\r\n`,
+        );
+        onOutputRef?.current?.();
+      }
     },
     [handleProcessCompletion, onOutputRef, terminalRef],
   );

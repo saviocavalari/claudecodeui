@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+
 import StandaloneShell from '../../standalone-shell/view/StandaloneShell';
 import { DEFAULT_PROJECT_FOR_EMPTY_SHELL, IS_PLATFORM } from '../../../constants/config';
 import type { LLMProvider } from '../../../types/app';
@@ -84,6 +85,11 @@ export default function ProviderLoginModal({
           >
             <X className="h-6 w-6" />
           </button>
+        </div>
+
+        <div className="border-b border-gray-700 bg-gray-900 px-4 py-3 text-sm text-gray-200">
+          Aguarde o Claude mostrar o link de acesso. Abra o link, entre na sua conta e
+          confirme a autorização; esta tela será atualizada automaticamente.
         </div>
 
         <div className="flex-1 overflow-hidden">

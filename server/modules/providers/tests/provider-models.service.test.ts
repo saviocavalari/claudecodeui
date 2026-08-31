@@ -130,8 +130,8 @@ test('provider models are cached for the three-day ttl', async () => {
   }
 });
 
-test('claude provider models are always loaded directly from the provider', async () => {
-  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'provider-model-cache-claude-direct-'));
+test('claude provider models are cached like any other provider', async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'provider-model-cache-claude-cached-'));
   let loadCount = 0;
 
   try {
@@ -152,10 +152,10 @@ test('claude provider models are always loaded directly from the provider', asyn
     const first = await service.getProviderModels('claude');
     const second = await service.getProviderModels('claude');
 
-    assert.equal(loadCount, 2);
+    assert.equal(loadCount, 1);
     assert.equal(first.models.DEFAULT, 'claude-1');
-    assert.equal(second.models.DEFAULT, 'claude-2');
-    assert.equal(second.cache.source, 'fresh');
+    assert.equal(second.models.DEFAULT, 'claude-1');
+    assert.equal(second.cache.source, 'memory');
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

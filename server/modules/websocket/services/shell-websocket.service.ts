@@ -5,8 +5,9 @@ import path from 'node:path';
 import pty, { type IPty } from 'node-pty';
 import { WebSocket, type RawData } from 'ws';
 
-import { parseIncomingJsonObject } from '@/shared/utils.js';
 import { userIdCanAccessProjectPath, activityLogDb } from '@/modules/database/index.js';
+import { providerAccountsService } from '@/modules/providers/index.js';
+import { parseIncomingJsonObject } from '@/shared/utils.js';
 
 type ShellIncomingMessage = {
   type?: string;
@@ -243,12 +244,19 @@ export function handleShellConnection(
       }
 
       if (data.type === 'init') {
+        const initialCommand = readString(data.initialCommand);
+        const isProviderLogin = Boolean(
+          initialCommand &&
+          await providerAccountsService.isAllowedLoginCommand(userId, initialCommand)
+        );
         const projectPath = readString(data.projectPath, process.cwd());
 
         // Multi-user guard: a member may only open a terminal inside a project
         // they were granted. Denies the process.cwd() fallback too (which would
-        // otherwise drop a member into the app's own directory).
-        if (!userIdCanAccessProjectPath(userId, projectPath)) {
+        // otherwise drop a member into the app's own directory). Provider login
+        // is the one projectless exception, and its command is matched exactly
+        // against commands generated for this user's stored accounts.
+        if (!isProviderLogin && !userIdCanAccessProjectPath(userId, projectPath)) {
           ws.send(
             JSON.stringify({
               type: 'error',
@@ -267,7 +275,6 @@ export function handleShellConnection(
         const sessionId = readString(data.sessionId) || null;
         const hasSession = readBoolean(data.hasSession);
         const provider = readString(data.provider, 'claude');
-        const initialCommand = readString(data.initialCommand);
         const forceRestart = readBoolean(data.forceRestart);
         const isPlainShell =
           readBoolean(data.isPlainShell) ||
@@ -278,16 +285,17 @@ export function handleShellConnection(
         announcedAuthUrls.clear();
 
         const isLoginCommand =
-          !!initialCommand &&
-          (initialCommand.includes('setup-token') ||
-            initialCommand.includes('cursor-agent login') ||
-            initialCommand.includes('auth login'));
+          isProviderLogin ||
+          (!!initialCommand &&
+            (initialCommand.includes('setup-token') ||
+              initialCommand.includes('cursor-agent login') ||
+              initialCommand.includes('auth login')));
 
         const commandSuffix =
           isPlainShell && initialCommand
             ? `_cmd_${Buffer.from(initialCommand).toString('base64').slice(0, 16)}`
             : '';
-        ptySessionKey = `${projectPath}_${sessionId ?? 'default'}${commandSuffix}`;
+        ptySessionKey = `${String(userId ?? 'local')}_${projectPath}_${sessionId ?? 'default'}${commandSuffix}`;
 
         if (isLoginCommand || forceRestart) {
           const oldSession = ptySessionsMap.get(ptySessionKey);
@@ -359,6 +367,18 @@ export function handleShellConnection(
         // operate on arbitrary project directories where that value is wrong
         // (e.g. it makes `npm install` silently skip devDependencies).
         const { NODE_ENV: _serverNodeEnv, ...shellEnv } = process.env;
+        const [claudeAccount, codexAccount] = await Promise.all([
+          providerAccountsService.getRuntimeContext(
+            'claude',
+            userId,
+            { requireAccount: false },
+          ),
+          providerAccountsService.getRuntimeContext(
+            'codex',
+            userId,
+            { requireAccount: false },
+          ),
+        ]);
 
         shellProcess = pty.spawn(shell, shellArgs, {
           name: 'xterm-256color',
@@ -367,6 +387,8 @@ export function handleShellConnection(
           cwd: resolvedProjectPath,
           env: {
             ...shellEnv,
+            ...claudeAccount.env,
+            ...codexAccount.env,
             [prioritizedPath.key]: prioritizedPath.value,
             TERM: 'xterm-256color',
             COLORTERM: 'truecolor',

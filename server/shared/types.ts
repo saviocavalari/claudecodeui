@@ -502,6 +502,33 @@ export type ProviderAuthStatus = {
   error?: string;
 };
 
+export type ProviderAuthOptions = {
+  env?: Record<string, string>;
+};
+
+export type ProviderAccountProvider = Extract<LLMProvider, 'claude' | 'codex'>;
+
+export type ProviderAccount = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  isActive: boolean;
+  authenticated: boolean;
+  email: string | null;
+  method: string | null;
+  error: string | null;
+  createdAt: string | null;
+  coolingUntil: string | null;
+};
+
+export type ProviderAccountsSnapshot = {
+  provider: ProviderAccountProvider;
+  activeProfileId: string | null;
+  autoSwitch: boolean;
+  allowGlobalAccount: boolean;
+  accounts: ProviderAccount[];
+};
+
 // ---------------------------
 //----------------- SHARED DATABASE CREDENTIAL TYPES ------------
 /**

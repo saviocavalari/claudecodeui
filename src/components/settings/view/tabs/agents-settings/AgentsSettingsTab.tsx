@@ -33,19 +33,19 @@ export default function AgentsSettingsTab({
   const agentContextById = useMemo<Record<AgentProvider, AgentContext>>(() => ({
     claude: {
       authStatus: providerAuthStatus.claude,
-      onLogin: () => onProviderLogin('claude'),
+      onLogin: (customCommand) => onProviderLogin('claude', customCommand),
     },
     cursor: {
       authStatus: providerAuthStatus.cursor,
-      onLogin: () => onProviderLogin('cursor'),
+      onLogin: (customCommand) => onProviderLogin('cursor', customCommand),
     },
     codex: {
       authStatus: providerAuthStatus.codex,
-      onLogin: () => onProviderLogin('codex'),
+      onLogin: (customCommand) => onProviderLogin('codex', customCommand),
     },
     opencode: {
       authStatus: providerAuthStatus.opencode,
-      onLogin: () => onProviderLogin('opencode'),
+      onLogin: (customCommand) => onProviderLogin('opencode', customCommand),
     },
   }), [
     onProviderLogin,

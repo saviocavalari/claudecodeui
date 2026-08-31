@@ -79,6 +79,12 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role }),
       }),
+    setUserGlobalProviderAccountAccess: (userId, allowed) =>
+      authenticatedFetch(`/api/admin/users/${userId}/global-provider-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowed }),
+      }),
     setUserProjects: (userId, projectIds) =>
       authenticatedFetch(`/api/admin/users/${userId}/projects`, {
         method: 'PUT',

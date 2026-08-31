@@ -1,5 +1,9 @@
+import path from 'node:path';
+
 import express, { type Request, type Response } from 'express';
 
+import { activityLogDb, projectAccessDb, projectsDb, sessionsDb, userIdCanAccessProjectPath } from '@/modules/database/index.js';
+import { providerAccountsService } from '@/modules/providers/services/provider-accounts.service.js';
 import { providerAuthService } from '@/modules/providers/services/provider-auth.service.js';
 import { providerCapabilitiesService } from '@/modules/providers/services/provider-capabilities.service.js';
 import { providerMcpService } from '@/modules/providers/services/mcp.service.js';
@@ -7,12 +11,11 @@ import { providerModelsService } from '@/modules/providers/services/provider-mod
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
-import { projectAccessDb, projectsDb, activityLogDb } from '@/modules/database/index.js';
-import path from 'node:path';
 import type {
   LLMProvider,
   McpScope,
   McpTransport,
+  ProviderAccountProvider,
   ProviderChangeActiveModelInput,
   ProviderSkillCreateFile,
   ProviderSkillCreateInput,
@@ -298,6 +301,37 @@ const parseProvider = (value: unknown): LLMProvider => {
   });
 };
 
+const parseAccountProvider = (value: unknown): ProviderAccountProvider => {
+  const provider = parseProvider(value);
+  if (provider === 'claude' || provider === 'codex') {
+    return provider;
+  }
+
+  throw new AppError(`Multiple accounts are not supported for "${provider}".`, {
+    code: 'PROVIDER_ACCOUNTS_UNSUPPORTED',
+    statusCode: 400,
+  });
+};
+
+const readRequestUserId = (req: Request): string | number | null => {
+  const user = (req as Request & {
+    user?: { id?: string | number; userId?: string | number };
+  }).user;
+  return user?.id ?? user?.userId ?? null;
+};
+
+const parseAccountId = (value: unknown): string => {
+  const accountId = readPathParam(value, 'accountId').trim();
+  if (accountId === 'default' || /^[a-f0-9-]{36}$/.test(accountId)) {
+    return accountId;
+  }
+
+  throw new AppError('Invalid provider account id.', {
+    code: 'INVALID_PROVIDER_ACCOUNT_ID',
+    statusCode: 400,
+  });
+};
+
 const parseSessionRenameSummary = (payload: unknown): string => {
   if (!payload || typeof payload !== 'object') {
     throw new AppError('Request body must be an object.', {
@@ -381,8 +415,97 @@ router.get(
   '/:provider/auth/status',
   asyncHandler(async (req: Request, res: Response) => {
     const provider = parseProvider(req.params.provider);
-    const status = await providerAuthService.getProviderAuthStatus(provider);
+    const status = await providerAuthService.getProviderAuthStatus(provider, readRequestUserId(req));
     res.json(createApiSuccessResponse(status));
+  }),
+);
+
+router.get(
+  '/:provider/accounts',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const snapshot = await providerAccountsService.listAccounts(provider, readRequestUserId(req));
+    res.json(createApiSuccessResponse(snapshot));
+  }),
+);
+
+router.post(
+  '/:provider/accounts',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const name = req.body && typeof req.body === 'object'
+      ? (req.body as Record<string, unknown>).name
+      : undefined;
+    const result = await providerAccountsService.createAccount(
+      provider,
+      readRequestUserId(req),
+      name,
+    );
+    res.status(201).json(createApiSuccessResponse(result));
+  }),
+);
+
+router.post(
+  '/:provider/accounts/:accountId/activate',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const accountId = parseAccountId(req.params.accountId);
+    const snapshot = await providerAccountsService.activateAccount(
+      provider,
+      readRequestUserId(req),
+      accountId,
+    );
+    res.json(createApiSuccessResponse(snapshot));
+  }),
+);
+
+router.post(
+  '/:provider/accounts/:accountId/login-command',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const accountId = parseAccountId(req.params.accountId);
+    const loginCommand = await providerAccountsService.getLoginCommand(
+      provider,
+      readRequestUserId(req),
+      accountId,
+    );
+    res.json(createApiSuccessResponse({ loginCommand }));
+  }),
+);
+
+router.patch(
+  '/:provider/accounts/settings',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const autoSwitch = req.body && typeof req.body === 'object'
+      ? (req.body as Record<string, unknown>).autoSwitch
+      : undefined;
+    if (typeof autoSwitch !== 'boolean') {
+      throw new AppError('autoSwitch must be a boolean.', {
+        code: 'INVALID_PROVIDER_ACCOUNT_SETTINGS',
+        statusCode: 400,
+      });
+    }
+    const snapshot = await providerAccountsService.updateSettings(
+      provider,
+      readRequestUserId(req),
+      autoSwitch,
+    );
+    res.json(createApiSuccessResponse(snapshot));
+  }),
+);
+
+router.delete(
+  '/:provider/accounts/:accountId',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const accountId = parseAccountId(req.params.accountId);
+    const snapshot = await providerAccountsService.deleteAccount(
+      provider,
+      readRequestUserId(req),
+      accountId,
+    );
+    res.json(createApiSuccessResponse(snapshot));
   }),
 );
 
@@ -590,8 +713,21 @@ router.post(
 
 router.get(
   '/sessions/running',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const sessions = sessionsService.listRunningSessions();
+  asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as Request & { user?: { id?: number | string; role?: string } }).user;
+    const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
+    const sessions = sessionsService.listRunningSessions().filter((session) => {
+      if (user?.role === 'admin') {
+        return true;
+      }
+
+      if (!Number.isFinite(userId)) {
+        return false;
+      }
+
+      const sessionRow = sessionsDb.getSessionById(session.sessionId);
+      return userIdCanAccessProjectPath(userId, sessionRow?.project_path ?? null);
+    });
     res.json(createApiSuccessResponse({ sessions }));
   }),
 );

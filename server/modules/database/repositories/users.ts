@@ -19,17 +19,18 @@ type UserRow = {
   git_email: string | null;
   has_completed_onboarding: number;
   role: string;
+  can_use_global_provider_account: number;
 };
 
 type UserPublicRow = Pick<
   UserRow,
-  'id' | 'username' | 'created_at' | 'last_login' | 'role'
+  'id' | 'username' | 'created_at' | 'last_login' | 'role' | 'can_use_global_provider_account'
 >;
 
 /** Row shape returned to the admin user-management panel. */
 export type UserAdminRow = Pick<
   UserRow,
-  'id' | 'username' | 'created_at' | 'last_login' | 'is_active' | 'role'
+  'id' | 'username' | 'created_at' | 'last_login' | 'is_active' | 'role' | 'can_use_global_provider_account'
 >;
 
 type UserGitConfig = {
@@ -67,8 +68,15 @@ export const userDb = {
   ): CreateUserResult {
     const db = getConnection();
     const result = db
-      .prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)')
-      .run(username, passwordHash, role);
+      .prepare(
+        `INSERT INTO users (
+          username,
+          password_hash,
+          role,
+          can_use_global_provider_account
+        ) VALUES (?, ?, ?, ?)`
+      )
+      .run(username, passwordHash, role, role === 'admin' ? 1 : 0);
     return { id: result.lastInsertRowid, username };
   },
 
@@ -105,7 +113,15 @@ export const userDb = {
     const db = getConnection();
     return db
       .prepare(
-        'SELECT id, username, created_at, last_login, role FROM users WHERE id = ? AND is_active = 1'
+        `SELECT
+          id,
+          username,
+          created_at,
+          last_login,
+          role,
+          can_use_global_provider_account
+        FROM users
+        WHERE id = ? AND is_active = 1`
       )
       .get(userId) as UserPublicRow | undefined;
   },
@@ -115,7 +131,16 @@ export const userDb = {
     const db = getConnection();
     return db
       .prepare(
-        'SELECT id, username, created_at, last_login, role FROM users WHERE is_active = 1 LIMIT 1'
+        `SELECT
+          id,
+          username,
+          created_at,
+          last_login,
+          role,
+          can_use_global_provider_account
+        FROM users
+        WHERE is_active = 1
+        LIMIT 1`
       )
       .get() as UserPublicRow | undefined;
   },
@@ -125,7 +150,16 @@ export const userDb = {
     const db = getConnection();
     return db
       .prepare(
-        'SELECT id, username, created_at, last_login, is_active, role FROM users ORDER BY id ASC'
+        `SELECT
+          id,
+          username,
+          created_at,
+          last_login,
+          is_active,
+          role,
+          can_use_global_provider_account
+        FROM users
+        ORDER BY id ASC`
       )
       .all() as UserAdminRow[];
   },
@@ -143,6 +177,14 @@ export const userDb = {
   setRole(userId: number, role: 'admin' | 'member'): void {
     const db = getConnection();
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+  },
+
+  /** Grants or revokes use of the host-level Claude/Codex authentication. */
+  setGlobalProviderAccountAccess(userId: number, allowed: boolean): void {
+    const db = getConnection();
+    db.prepare(
+      'UPDATE users SET can_use_global_provider_account = ? WHERE id = ?'
+    ).run(allowed ? 1 : 0, userId);
   },
 
   /** Permanently deletes a user (project grants cascade via foreign key). */

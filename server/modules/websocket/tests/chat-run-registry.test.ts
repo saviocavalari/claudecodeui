@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { closeConnection, initializeDatabase, sessionsDb } from '@/modules/database/index.js';
+import { closeConnection, initializeDatabase, projectAccessDb, projectsDb, sessionsDb, userDb } from '@/modules/database/index.js';
 import { chatRunRegistry } from '@/modules/websocket/services/chat-run-registry.service.js';
 import { connectedClients } from '@/modules/websocket/services/websocket-state.service.js';
 
@@ -14,7 +14,12 @@ import { connectedClients } from '@/modules/websocket/services/websocket-state.s
  */
 class FakeConnection {
   readyState = 1; // WS_OPEN_STATE
+  userId?: number | string | null;
   frames: Array<Record<string, unknown>> = [];
+
+  constructor(userId?: number | string | null) {
+    this.userId = userId;
+  }
 
   send(data: string): void {
     this.frames.push(JSON.parse(data) as Record<string, unknown>);
@@ -98,6 +103,45 @@ test('session_created is swallowed and persisted as the provider-id mapping', as
     // ...but the canonical mapping is recorded and persisted in the database.
     assert.equal(run.providerSessionId, 'cursor-native-7');
     assert.equal(sessionsDb.getSessionById('app-run-2')?.provider_session_id, 'cursor-native-7');
+  });
+});
+
+test('session upsert broadcasts only to clients with project access', async () => {
+  await withIsolatedDatabase(() => {
+    const admin = userDb.createUser('admin', 'hash', 'admin');
+    const allowed = userDb.createUser('allowed', 'hash', 'member');
+    const denied = userDb.createUser('denied', 'hash', 'member');
+    sessionsDb.createAppSession('app-run-access', 'claude', '/workspace/restricted');
+    const project = projectsDb.getProjectPath('/workspace/restricted');
+    assert.ok(project);
+    projectAccessDb.grant(Number(allowed.id), project.project_id);
+
+    const adminConnection = new FakeConnection(Number(admin.id));
+    const allowedConnection = new FakeConnection(Number(allowed.id));
+    const deniedConnection = new FakeConnection(Number(denied.id));
+    connectedClients.add(adminConnection as never);
+    connectedClients.add(allowedConnection as never);
+    connectedClients.add(deniedConnection as never);
+
+    const run = chatRunRegistry.startRun({
+      appSessionId: 'app-run-access',
+      provider: 'claude',
+      providerSessionId: null,
+      connection: allowedConnection,
+      userId: Number(allowed.id),
+    });
+    assert.ok(run);
+
+    run.writer.send({
+      kind: 'session_created',
+      provider: 'claude',
+      sessionId: 'claude-native-access',
+      newSessionId: 'claude-native-access',
+    });
+
+    assert.equal(adminConnection.frames.filter((frame) => frame.kind === 'session_upserted').length, 1);
+    assert.equal(allowedConnection.frames.filter((frame) => frame.kind === 'session_upserted').length, 1);
+    assert.equal(deniedConnection.frames.filter((frame) => frame.kind === 'session_upserted').length, 0);
   });
 });
 

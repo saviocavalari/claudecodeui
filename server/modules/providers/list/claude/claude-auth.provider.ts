@@ -6,7 +6,7 @@ import spawn from 'cross-spawn';
 
 import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
 import type { IProviderAuth } from '@/shared/interfaces.js';
-import type { ProviderAuthStatus } from '@/shared/types.js';
+import type { ProviderAuthOptions, ProviderAuthStatus } from '@/shared/types.js';
 import { readObjectRecord, readOptionalString } from '@/shared/utils.js';
 
 type ClaudeCredentialsStatus = {
@@ -37,7 +37,7 @@ export class ClaudeProviderAuth implements IProviderAuth {
   /**
    * Returns Claude installation and credential status using Claude Code's auth priority.
    */
-  async getStatus(): Promise<ProviderAuthStatus> {
+  async getStatus(options: ProviderAuthOptions = {}): Promise<ProviderAuthStatus> {
     const installed = this.checkInstalled();
 
     if (!installed) {
@@ -51,7 +51,7 @@ export class ClaudeProviderAuth implements IProviderAuth {
       };
     }
 
-    const credentials = await this.checkCredentials();
+    const credentials = await this.checkCredentials(options.env ?? {});
 
     return {
       installed,
@@ -66,9 +66,9 @@ export class ClaudeProviderAuth implements IProviderAuth {
   /**
    * Reads Claude settings env values that the CLI can use even when the server process env is empty.
    */
-  private async loadSettingsEnv(): Promise<Record<string, unknown>> {
+  private async loadSettingsEnv(configDir: string): Promise<Record<string, unknown>> {
     try {
-      const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+      const settingsPath = path.join(configDir, 'settings.json');
       const content = await readFile(settingsPath, 'utf8');
       const settings = readObjectRecord(JSON.parse(content));
       return readObjectRecord(settings?.env) ?? {};
@@ -80,18 +80,20 @@ export class ClaudeProviderAuth implements IProviderAuth {
   /**
    * Checks Claude credentials in the same priority order used by Claude Code.
    */
-  private async checkCredentials(): Promise<ClaudeCredentialsStatus> {
+  private async checkCredentials(env: Record<string, string>): Promise<ClaudeCredentialsStatus> {
     const missingCredentialsError = 'Claude CLI is not authenticated. Run claude /login or configure ANTHROPIC_API_KEY.';
+    const configDir = env.CLAUDE_CONFIG_DIR?.trim() || path.join(os.homedir(), '.claude');
+    const isolatedProfile = Boolean(env.CLAUDE_CONFIG_DIR?.trim());
 
-    if (process.env.ANTHROPIC_AUTH_TOKEN?.trim()) {
+    if (env.ANTHROPIC_AUTH_TOKEN?.trim() || (!isolatedProfile && process.env.ANTHROPIC_AUTH_TOKEN?.trim())) {
       return { authenticated: true, email: 'Auth Token', method: 'api_key' };
     }
 
-    if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    if (env.ANTHROPIC_API_KEY?.trim() || (!isolatedProfile && process.env.ANTHROPIC_API_KEY?.trim())) {
       return { authenticated: true, email: 'API Key Auth', method: 'api_key' };
     }
 
-    const settingsEnv = await this.loadSettingsEnv();
+    const settingsEnv = await this.loadSettingsEnv(configDir);
     if (readOptionalString(settingsEnv.ANTHROPIC_API_KEY)) {
       return { authenticated: true, email: 'API Key Auth', method: 'api_key' };
     }
@@ -101,7 +103,7 @@ export class ClaudeProviderAuth implements IProviderAuth {
     }
 
     try {
-      const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
+      const credPath = path.join(configDir, '.credentials.json');
       const content = await readFile(credPath, 'utf8');
       const creds = readObjectRecord(JSON.parse(content)) ?? {};
       const oauth = readObjectRecord(creds.claudeAiOauth);

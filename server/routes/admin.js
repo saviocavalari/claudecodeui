@@ -6,11 +6,12 @@
  * change roles, and grant/revoke which projects each member can work on.
  */
 
-import express from 'express';
 import path from 'node:path';
-import spawn from 'cross-spawn';
 
-import { userDb, projectAccessDb, projectsDb, activityLogDb } from '../modules/database/index.js';
+import spawn from 'cross-spawn';
+import express from 'express';
+
+import { activityLogDb, projectAccessDb, projectsDb, userDb } from '../modules/database/index.js';
 
 const router = express.Router();
 
@@ -43,6 +44,7 @@ router.get('/users', (req, res) => {
     const users = userDb.listUsers().map((user) => ({
       ...user,
       is_active: Boolean(user.is_active),
+      can_use_global_provider_account: Boolean(user.can_use_global_provider_account),
       projectIds:
         user.role === 'admin'
           ? 'all'
@@ -161,6 +163,36 @@ router.post('/users/:id/role', (req, res) => {
   } catch (error) {
     console.error('[admin] set role error:', error);
     res.status(500).json({ error: 'Failed to update role' });
+  }
+});
+
+// Grant or revoke use of the host-level Claude/Codex account for one user.
+router.post('/users/:id/global-provider-account', (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const allowed = req.body?.allowed;
+    if (!Number.isInteger(userId) || typeof allowed !== 'boolean') {
+      return res.status(400).json({
+        error: 'A valid user id and boolean allowed value are required.',
+      });
+    }
+
+    const target = userDb.listUsers().find((user) => user.id === userId);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    userDb.setGlobalProviderAccountAccess(userId, allowed);
+    activityLogDb.record({
+      userId: req.user.id,
+      username: req.user.username,
+      action: 'user.global_provider_account',
+      detail: `${target.username}: ${allowed ? 'liberado' : 'revogado'}`,
+    });
+    res.json({ success: true, allowed });
+  } catch (error) {
+    console.error('[admin] set global provider account access error:', error);
+    res.status(500).json({ error: 'Failed to update global provider account access' });
   }
 });
 

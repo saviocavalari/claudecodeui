@@ -4,6 +4,7 @@ import type { WebSocket } from 'ws';
 
 import { sessionsDb, userIdCanAccessProjectPath } from '@/modules/database/index.js';
 import { chatRunRegistry } from '@/modules/websocket/services/chat-run-registry.service.js';
+import { attachUserToRealtimeClient } from '@/modules/websocket/services/project-broadcast.service.js';
 import { connectedClients, WS_OPEN_STATE } from '@/modules/websocket/services/websocket-state.service.js';
 import { getGlobalImageAssetsDir, normalizeFileDescriptors, normalizeImageDescriptors } from '@/shared/image-attachments.js';
 import type {
@@ -419,6 +420,7 @@ export function handleChatConnection(
   connectedClients.add(ws);
 
   const userId = readRequestUserId(request);
+  attachUserToRealtimeClient(ws, userId);
 
   ws.on('message', async (rawMessage) => {
     try {

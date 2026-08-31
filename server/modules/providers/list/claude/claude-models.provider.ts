@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
+import os from 'node:os';
+
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { ModelInfo, Options, Query } from '@anthropic-ai/claude-agent-sdk';
 
 import { sessionsDb } from '@/modules/database/index.js';
+import { resolveClaudeCodeExecutablePath } from '@/shared/claude-cli-path.js';
 import type { IProviderModels } from '@/shared/interfaces.js';
 import type {
   ProviderChangeActiveModelInput,
@@ -93,6 +98,68 @@ export const findClaudeModelOption = (model: string | undefined | null): Provide
 
   return CLAUDE_FALLBACK_MODELS.OPTIONS.find((option) => option.value === normalizedModel) ?? null;
 };
+
+const CLAUDE_MODELS_QUERY_TIMEOUT_MS = 15_000;
+const CLAUDE_EFFORT_DEFAULT = 'high';
+
+/**
+ * Options for the throwaway model-discovery query. persistSession: false keeps
+ * the probe out of ~/.claude/projects, so the sessions watcher never indexes a
+ * phantom project for it; the tmpdir cwd keeps any residual writes away from
+ * real workspaces. Exported for tests.
+ */
+export const buildClaudeQueryOptions = (): Options => ({
+  persistSession: false,
+  maxTurns: 1,
+  cwd: os.tmpdir(),
+  // Since SDK 0.2.113 options.env replaces process.env instead of overlaying
+  // it, so the host environment must be forwarded explicitly.
+  env: { ...process.env },
+  pathToClaudeCodeExecutable: resolveClaudeCodeExecutablePath(process.env.CLAUDE_CLI_PATH),
+});
+
+/**
+ * Maps SDK ModelInfo rows onto the frontend model catalog shape. Exported for
+ * tests.
+ */
+export const buildClaudeModelsDefinition = (models: ModelInfo[]): ProviderModelsDefinition => {
+  const options: ProviderModelOption[] = [];
+  const seenValues = new Set<string>();
+
+  for (const model of models) {
+    const value = typeof model.value === 'string' ? model.value.trim() : '';
+    if (!value || seenValues.has(value)) {
+      continue;
+    }
+
+    const effortLevels = model.supportsEffort && Array.isArray(model.supportedEffortLevels)
+      ? model.supportedEffortLevels
+      : [];
+
+    seenValues.add(value);
+    options.push({
+      value,
+      label: model.displayName || value,
+      description: model.description || undefined,
+      effort: effortLevels.length > 0
+        ? {
+            default: effortLevels.includes(CLAUDE_EFFORT_DEFAULT) ? CLAUDE_EFFORT_DEFAULT : effortLevels[0],
+            values: effortLevels.map((level) => ({ value: level })),
+          }
+        : undefined,
+    });
+  }
+
+  if (options.length === 0) {
+    return CLAUDE_FALLBACK_MODELS;
+  }
+
+  return {
+    OPTIONS: options,
+    DEFAULT: seenValues.has('default') ? 'default' : options[0].value,
+  };
+};
+
 type ClaudeInitEvent = {
   sessionId?: string;
   session_id?: string;
@@ -204,18 +271,38 @@ const readClaudeSessionModelFromJsonl = async (
 
 export class ClaudeProviderModels implements IProviderModels {
   async getSupportedModels(): Promise<ProviderModelsDefinition> {
-    // claude creates a new jsonl file as a separate session for this request.
-    // As a result, it lists the workspace where this is invoked when it shouldn't.
-    //
-    // Disabled for now:
-    // const queryInstance = query({
-    //   prompt: 'Get supported models',
-    //   options: buildClaudeQueryOptions(),
-    // });
-    // const supportedModels = await queryInstance.supportedModels();
-    // queryInstance.close();
-    // return buildClaudeModelsDefinition(supportedModels);
-    return CLAUDE_FALLBACK_MODELS;
+    let queryInstance: Query | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      queryInstance = query({
+        prompt: 'Get supported models',
+        options: buildClaudeQueryOptions(),
+      });
+
+      const models = await Promise.race([
+        queryInstance.supportedModels(),
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(new Error('Timed out waiting for Claude supported models')),
+            CLAUDE_MODELS_QUERY_TIMEOUT_MS,
+          );
+        }),
+      ]);
+
+      return buildClaudeModelsDefinition(models);
+    } catch {
+      return CLAUDE_FALLBACK_MODELS;
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+      try {
+        queryInstance?.close();
+      } catch {
+        // The discovery subprocess may already be gone; ignore close errors.
+      }
+    }
   }
 
   async getCurrentActiveModel(sessionId?: string): Promise<ProviderCurrentActiveModel> {

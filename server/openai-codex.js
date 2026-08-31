@@ -19,6 +19,7 @@ import { appendFilesInputTag, buildCodexInputItems, normalizeFileDescriptors, no
 import { notifyRunFailed, notifyRunStopped } from './services/notification-orchestrator.js';
 import { sessionsService } from './modules/providers/services/sessions.service.js';
 import { providerAuthService } from './modules/providers/services/provider-auth.service.js';
+import { providerAccountsService } from './modules/providers/services/provider-accounts.service.js';
 import { providerModelsService } from './modules/providers/services/provider-models.service.js';
 import { createCompleteMessage, createNormalizedMessage } from './shared/utils.js';
 
@@ -275,9 +276,16 @@ export async function queryCodex(command, options = {}, ws) {
   let sessionCreatedSent = false;
   let terminalFailure = null;
   const abortController = new AbortController();
+  let accountContext = { env: {}, profileId: 'default' };
 
   try {
-    codex = new Codex();
+    accountContext = await providerAccountsService.getRuntimeContext('codex', ws?.userId);
+    const codexEnv = { ...process.env, ...accountContext.env };
+    if (accountContext.env.CODEX_HOME) {
+      delete codexEnv.OPENAI_API_KEY;
+      delete codexEnv.CODEX_ACCESS_TOKEN;
+    }
+    codex = new Codex({ env: codexEnv });
 
     const threadOptions = {
       workingDirectory,
@@ -390,6 +398,28 @@ export async function queryCodex(command, options = {}, ws) {
     // terminal `complete` (aborted: true) was already sent by abort-session.
     const runSession = capturedSessionId ? activeCodexSessions.get(capturedSessionId) : null;
     const runAborted = runSession?.status === 'aborted' || abortController.signal.aborted;
+    const retryCount = Number(options._accountRetryCount || 0);
+    if (!runAborted && terminalFailure && retryCount < 10) {
+      const switched = await providerAccountsService.switchAfterUsageLimit(
+        'codex',
+        ws?.userId,
+        accountContext.profileId,
+        terminalFailure,
+      );
+      if (switched) {
+        sendMessage(ws, createNormalizedMessage({
+          kind: 'status',
+          text: 'account_switched',
+          content: `Limite atingido. Trocando automaticamente para ${switched.accountName}.`,
+          provider: 'codex',
+          sessionId: capturedSessionId || sessionId || null,
+        }));
+        return queryCodex(command, {
+          ...options,
+          _accountRetryCount: retryCount + 1,
+        }, ws);
+      }
+    }
     if (!runAborted) {
       sendMessage(ws, createCompleteMessage({
         provider: 'codex',
@@ -418,8 +448,31 @@ export async function queryCodex(command, options = {}, ws) {
     if (!wasAborted) {
       console.error('[Codex] Error:', error);
 
+      const retryCount = Number(options._accountRetryCount || 0);
+      if (retryCount < 10) {
+        const switched = await providerAccountsService.switchAfterUsageLimit(
+          'codex',
+          ws?.userId,
+          accountContext.profileId,
+          error,
+        );
+        if (switched) {
+          sendMessage(ws, createNormalizedMessage({
+            kind: 'status',
+            text: 'account_switched',
+            content: `Limite atingido. Trocando automaticamente para ${switched.accountName}.`,
+            provider: 'codex',
+            sessionId: capturedSessionId || sessionId || null,
+          }));
+          return queryCodex(command, {
+            ...options,
+            _accountRetryCount: retryCount + 1,
+          }, ws);
+        }
+      }
+
       // Check if Codex SDK is available for a clearer error message
-      const installed = await providerAuthService.isProviderInstalled('codex');
+      const installed = await providerAuthService.isProviderInstalled('codex', ws?.userId);
       const errorContent = !installed
         ? 'Codex CLI is not configured. Please set up authentication first.'
         : error.message;

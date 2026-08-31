@@ -5,7 +5,7 @@ import path from 'node:path';
 import spawn from 'cross-spawn';
 
 import type { IProviderAuth } from '@/shared/interfaces.js';
-import type { ProviderAuthStatus } from '@/shared/types.js';
+import type { ProviderAuthOptions, ProviderAuthStatus } from '@/shared/types.js';
 import { readObjectRecord, readOptionalString } from '@/shared/utils.js';
 
 type CodexCredentialsStatus = {
@@ -31,9 +31,9 @@ export class CodexProviderAuth implements IProviderAuth {
   /**
    * Returns Codex SDK availability and credential status.
    */
-  async getStatus(): Promise<ProviderAuthStatus> {
+  async getStatus(options: ProviderAuthOptions = {}): Promise<ProviderAuthStatus> {
     const installed = this.checkInstalled();
-    const credentials = await this.checkCredentials();
+    const credentials = await this.checkCredentials(options.env ?? {});
 
     return {
       installed,
@@ -48,9 +48,10 @@ export class CodexProviderAuth implements IProviderAuth {
   /**
    * Reads Codex auth.json and checks OAuth tokens or an API key fallback.
    */
-  private async checkCredentials(): Promise<CodexCredentialsStatus> {
+  private async checkCredentials(env: Record<string, string>): Promise<CodexCredentialsStatus> {
     try {
-      const authPath = path.join(os.homedir(), '.codex', 'auth.json');
+      const codexHome = env.CODEX_HOME?.trim() || path.join(os.homedir(), '.codex');
+      const authPath = path.join(codexHome, 'auth.json');
       const content = await readFile(authPath, 'utf8');
       const auth = readObjectRecord(JSON.parse(content)) ?? {};
       const tokens = readObjectRecord(auth.tokens) ?? {};

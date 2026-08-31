@@ -31,6 +31,7 @@ import {
 } from './services/notification-orchestrator.js';
 import { sessionsService } from './modules/providers/services/sessions.service.js';
 import { providerAuthService } from './modules/providers/services/provider-auth.service.js';
+import { providerAccountsService } from './modules/providers/services/provider-accounts.service.js';
 import { createCompleteMessage, createNormalizedMessage } from './shared/utils.js';
 
 const activeSessions = new Map();
@@ -164,7 +165,11 @@ function mapCliOptionsToSDK(options = {}) {
 
   // Forward all host env vars (e.g. ANTHROPIC_BASE_URL) to the subprocess.
   // Since SDK 0.2.113, options.env replaces process.env instead of overlaying it.
-  sdkOptions.env = { ...process.env };
+  sdkOptions.env = { ...process.env, ...(options.providerEnv || {}) };
+  if (options.providerEnv?.CLAUDE_CONFIG_DIR) {
+    delete sdkOptions.env.ANTHROPIC_API_KEY;
+    delete sdkOptions.env.ANTHROPIC_AUTH_TOKEN;
+  }
 
   // Resolve the executable eagerly on Windows because the SDK uses raw child_process.spawn,
   // which does not reliably follow npm's shell wrappers like cross-spawn does.
@@ -465,6 +470,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
   const { sessionId, sessionSummary, appSessionId } = options;
   let capturedSessionId = sessionId;
   let sessionCreatedSent = false;
+  let accountContext = { env: {}, profileId: 'default' };
 
   const emitNotification = (event) => {
     notifyUserIfEnabled({
@@ -475,6 +481,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
   };
 
   try {
+    accountContext = await providerAccountsService.getRuntimeContext('claude', ws?.userId);
     const resolvedModel = await providerModelsService.resolveResumeModel(
       'claude',
       sessionId,
@@ -491,6 +498,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
       ...options,
       model: resolvedModel || options.model,
       effortModels,
+      providerEnv: accountContext.env,
     });
 
     const mcpServers = await loadMcpConfig(options.cwd);
@@ -735,8 +743,31 @@ async function queryClaudeSDK(command, options = {}, ws) {
       return;
     }
 
+    const retryCount = Number(options._accountRetryCount || 0);
+    if (retryCount < 10) {
+      const switched = await providerAccountsService.switchAfterUsageLimit(
+        'claude',
+        ws?.userId,
+        accountContext.profileId,
+        error,
+      );
+      if (switched) {
+        ws.send(createNormalizedMessage({
+          kind: 'status',
+          text: 'account_switched',
+          content: `Limite atingido. Trocando automaticamente para ${switched.accountName}.`,
+          provider: 'claude',
+          sessionId: capturedSessionId || sessionId || null,
+        }));
+        return queryClaudeSDK(command, {
+          ...options,
+          _accountRetryCount: retryCount + 1,
+        }, ws);
+      }
+    }
+
     // Check if Claude CLI is installed for a clearer error message
-    const installed = await providerAuthService.isProviderInstalled('claude');
+    const installed = await providerAuthService.isProviderInstalled('claude', ws?.userId);
     const errorContent = !installed
       ? 'Claude Code is not installed. Please install it first: https://docs.anthropic.com/en/docs/claude-code'
       : error.message;

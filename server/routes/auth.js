@@ -1,8 +1,9 @@
-import express from 'express';
 import bcrypt from 'bcrypt';
-import { userDb, activityLogDb } from '../modules/database/index.js';
-import { getConnection } from '../modules/database/connection.js';
+import express from 'express';
+
 import { generateToken, authenticateToken } from '../middleware/auth.js';
+import { getConnection } from '../modules/database/connection.js';
+import { activityLogDb, userDb } from '../modules/database/index.js';
 
 const router = express.Router();
 const db = getConnection();
@@ -67,7 +68,12 @@ router.post('/register', async (req, res) => {
 
       res.json({
         success: true,
-        user: { id: user.id, username: user.username, role },
+        user: {
+          id: user.id,
+          username: user.username,
+          role,
+          can_use_global_provider_account: role === 'admin',
+        },
         token
       });
     } catch (error) {
@@ -116,7 +122,12 @@ router.post('/login', async (req, res) => {
 
     res.json({
       success: true,
-      user: { id: user.id, username: user.username, role: user.role },
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        can_use_global_provider_account: Boolean(user.can_use_global_provider_account),
+      },
       token
     });
 

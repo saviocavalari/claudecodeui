@@ -12,6 +12,7 @@ type AdminUser = {
   last_login: string | null;
   is_active: boolean;
   role: 'admin' | 'member' | string;
+  can_use_global_provider_account: boolean;
   projectIds: 'all' | string[];
 };
 
@@ -140,7 +141,7 @@ export default function UsersAdminTab() {
             {admins.map((u) => (
               <div
                 key={u.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2"
               >
                 <div className="text-sm">
                   <span className="font-medium text-foreground">{u.username}</span>
@@ -149,19 +150,39 @@ export default function UsersAdminTab() {
                   )}
                   <div className="text-xs text-muted-foreground">Acesso total a todos os projetos</div>
                 </div>
-                {u.id !== currentUserId && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={savingUserId === u.id}
-                    onClick={() =>
-                      void runAction(u.id, () => api.admin.setUserRole(u.id, 'member'))
-                    }
-                  >
-                    <UserCog className="h-4 w-4" />
-                    Tornar comum
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={u.can_use_global_provider_account}
+                      disabled={savingUserId === u.id}
+                      onChange={(event) =>
+                        void runAction(
+                          u.id,
+                          () => api.admin.setUserGlobalProviderAccountAccess(
+                            u.id,
+                            event.target.checked,
+                          ),
+                        )
+                      }
+                    />
+                    Pode usar Claude/Codex global
+                  </label>
+                  {u.id !== currentUserId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={savingUserId === u.id}
+                      onClick={() =>
+                        void runAction(u.id, () => api.admin.setUserRole(u.id, 'member'))
+                      }
+                    >
+                      <UserCog className="h-4 w-4" />
+                      Tornar comum
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -244,6 +265,32 @@ export default function UsersAdminTab() {
                   </Button>
                 </div>
               </div>
+
+              <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 flex-shrink-0"
+                  checked={u.can_use_global_provider_account}
+                  disabled={isSaving}
+                  onChange={(event) =>
+                    void runAction(
+                      u.id,
+                      () => api.admin.setUserGlobalProviderAccountAccess(
+                        u.id,
+                        event.target.checked,
+                      ),
+                    )
+                  }
+                />
+                <span>
+                  <span className="block text-sm font-medium text-foreground">
+                    Permitir conta global do Claude/Codex
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Desmarcado: este usuário só poderá executar agentes usando contas que ele próprio conectar.
+                  </span>
+                </span>
+              </label>
 
               <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {projects.map((p) => (

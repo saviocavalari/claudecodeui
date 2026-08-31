@@ -368,6 +368,19 @@
       "button": "Login",
       "reLoginButton": "Re-login"
     },
+    "multipleAccounts": {
+      "title": "Connected accounts",
+      "description": "Choose the active account or connect more accounts to switch when a limit is reached.",
+      "add": "Add account",
+      "loading": "Loading accounts...",
+      "active": "In use",
+      "cooldown": "Limit reached",
+      "use": "Use this account",
+      "login": "Sign in again",
+      "remove": "Remove account",
+      "autoSwitch": "Switch automatically when a limit is reached",
+      "autoSwitchDescription": "CloudCLI tries the next connected account and repeats the current request."
+    },
     "error": "Error: {{error}}"
   },
   "permissions": {

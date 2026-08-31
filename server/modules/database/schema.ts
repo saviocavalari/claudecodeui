@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     has_completed_onboarding BOOLEAN DEFAULT 0,
     -- 'admin' can see/manage every project and every user.
     -- 'member' can only see projects explicitly granted in user_projects.
-    role TEXT NOT NULL DEFAULT 'member'
+    role TEXT NOT NULL DEFAULT 'member',
+    -- Explicit per-user permission to use the host-level Claude/Codex login.
+    can_use_global_provider_account BOOLEAN NOT NULL DEFAULT 0
 );
 `;
 

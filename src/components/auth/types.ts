@@ -6,6 +6,7 @@ export type AuthUser = {
   // 'admin' owns the installation and manages users/project access;
   // 'member' only sees projects an admin granted them.
   role?: string;
+  can_use_global_provider_account?: boolean;
   [key: string]: unknown;
 };
 
