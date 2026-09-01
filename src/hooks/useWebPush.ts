@@ -6,6 +6,7 @@ type WebPushState = {
   permission: NotificationPermission | 'unsupported';
   isSubscribed: boolean;
   isLoading: boolean;
+  error: string | null;
   subscribe: () => Promise<void>;
   unsubscribe: () => Promise<void>;
 };
@@ -35,6 +36,7 @@ export function useWebPush(): WebPushState {
   });
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Check existing subscription on mount
   useEffect(() => {
@@ -52,6 +54,7 @@ export function useWebPush(): WebPushState {
   const subscribe = useCallback(async () => {
     if (permission === 'unsupported') return;
     setIsLoading(true);
+    setError(null);
 
     try {
       const perm = await Notification.requestPermission();
@@ -59,6 +62,9 @@ export function useWebPush(): WebPushState {
       if (perm !== 'granted') return;
 
       const keyRes = await authenticatedFetch('/api/settings/push/vapid-public-key');
+      if (!keyRes.ok) {
+        throw new Error(`Server rejected the VAPID key request (HTTP ${keyRes.status}).`);
+      }
       const { publicKey } = await keyRes.json();
 
       const registration = await navigator.serviceWorker.ready;
@@ -68,17 +74,25 @@ export function useWebPush(): WebPushState {
       });
 
       const subJson = subscription.toJSON();
-      await authenticatedFetch('/api/settings/push/subscribe', {
+      const subscribeRes = await authenticatedFetch('/api/settings/push/subscribe', {
         method: 'POST',
         body: JSON.stringify({
           endpoint: subJson.endpoint,
           keys: subJson.keys,
         }),
       });
+      if (!subscribeRes.ok) {
+        throw new Error(`Server rejected the subscription (HTTP ${subscribeRes.status}).`);
+      }
 
       setIsSubscribed(true);
     } catch (err) {
+      // Silent before this point: the button just reverted to "enable" with
+      // no clue why (common culprits: iOS Safari outside an installed PWA,
+      // OS-level notification permission blocked, no network to the backend).
       console.error('Push subscribe failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
+      setIsSubscribed(false);
     } finally {
       setIsLoading(false);
     }
@@ -105,5 +119,5 @@ export function useWebPush(): WebPushState {
     }
   }, []);
 
-  return { permission, isSubscribed, isLoading, subscribe, unsubscribe };
+  return { permission, isSubscribed, isLoading, error, subscribe, unsubscribe };
 }

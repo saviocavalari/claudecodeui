@@ -72,6 +72,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
     permission: pushPermission,
     isSubscribed: isPushSubscribed,
     isLoading: isPushLoading,
+    error: pushError,
     subscribe: pushSubscribe,
     unsubscribe: pushUnsubscribe,
   } = useWebPush();
@@ -206,6 +207,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
                   pushPermission={pushPermission}
                   isPushSubscribed={isPushSubscribed}
                   isPushLoading={isPushLoading}
+                  pushError={pushError}
                   onEnablePush={handleEnablePush}
                   onDisablePush={handleDisablePush}
                   isDesktop={Boolean(desktopNotificationsBridge)}
