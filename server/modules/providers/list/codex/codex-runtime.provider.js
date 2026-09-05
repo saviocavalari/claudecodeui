@@ -327,13 +327,12 @@ export async function queryCodex(command, options = {}, ws, context) {
       registerSession(sessionKey());
     }
 
+    // Plan mode is injected first so the file block stays at the very end of
+    // the prompt, where every provider adapter expects to find (and strip) it.
     const modeAwareCommand = applyCodexPlanMode(command, permissionMode);
-    const promptWithFiles = normalizeFileDescriptors(options.files).length > 0
-      ? appendFilesInputTag(modeAwareCommand, options.files)
-      : modeAwareCommand;
     // Execute with streaming. Turns with image attachments send structured
     // input items so Codex reads the images from their local asset paths.
-    const promptWithFiles = appendFilesInputTag(command, files);
+    const promptWithFiles = appendFilesInputTag(modeAwareCommand, files);
     const turnInput = normalizeImageDescriptors(images).length > 0
       ? buildCodexInputItems(promptWithFiles, images, workingDirectory)
       : promptWithFiles;

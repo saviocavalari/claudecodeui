@@ -14,12 +14,30 @@ import type {
 } from '@/shared/types.js';
 import { buildDefaultProviderCurrentActiveModel } from '@/shared/utils.js';
 
-export const CLAUDE_FALLBACK_MODELS: ProviderModelsDefinition = {
+/**
+ * Fixed model catalog. Doubles as the fallback whenever the live SDK lookup in
+ * ClaudeProviderModels.getSupportedModels fails or times out.
+ */
+export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
   OPTIONS: [
     {
       value: 'default',
       label: 'Default (recommended)',
-      description: 'Opus 5 with 1M context · Best for everyday, complex tasks',
+      description: 'Use the recommended model for your Claude account and deployment.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'max' },
+        ],
+      },
+    },
+    {
+      value: 'best',
+      label: 'Best available',
+      description: 'Use Fable 5 when available, otherwise the latest Opus model.',
       effort: {
         default: 'high',
         values: [
@@ -33,8 +51,8 @@ export const CLAUDE_FALLBACK_MODELS: ProviderModelsDefinition = {
     },
     {
       value: 'fable',
-      label: 'Fable',
-      description: 'Fable 5 · Most capable for your hardest and longest-running tasks',
+      label: 'Fable 5',
+      description: 'Most capable Claude model for the hardest, longest-running tasks.',
       effort: {
         default: 'high',
         values: [
@@ -49,7 +67,37 @@ export const CLAUDE_FALLBACK_MODELS: ProviderModelsDefinition = {
     {
       value: 'sonnet',
       label: 'Sonnet',
-      description: 'Sonnet 5 · Efficient for routine tasks',
+      description: 'Latest Sonnet model for everyday coding tasks.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+        ],
+      },
+    },
+    {
+      value: 'sonnet[1m]',
+      label: 'Sonnet (1M context)',
+      description: 'Latest Sonnet model with a 1M context window.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+        ],
+      },
+    },
+    {
+      value: 'opus',
+      label: 'Opus',
+      description: 'Latest Opus model for complex reasoning and coding tasks.',
       effort: {
         default: 'high',
         values: [
@@ -64,7 +112,7 @@ export const CLAUDE_FALLBACK_MODELS: ProviderModelsDefinition = {
     {
       value: 'opus[1m]',
       label: 'Opus (1M context)',
-      description: 'Opus 5 with 1M context · Best for everyday, complex tasks',
+      description: 'Latest Opus model with a 1M context window.',
       effort: {
         default: 'high',
         values: [
@@ -79,7 +127,22 @@ export const CLAUDE_FALLBACK_MODELS: ProviderModelsDefinition = {
     {
       value: 'haiku',
       label: 'Haiku',
-      description: 'Haiku 4.5 · Fastest for quick answers',
+      description: 'Fast and efficient Claude model for simple tasks.',
+    },
+    {
+      value: 'opusplan',
+      label: 'Opus Plan',
+      description: 'Use Opus while planning, then switch to Sonnet for execution.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+        ],
+      },
     },
   ],
   DEFAULT: 'default',
@@ -91,7 +154,7 @@ export const findClaudeModelOption = (model: string | undefined | null): Provide
     return null;
   }
 
-  return CLAUDE_FALLBACK_MODELS.OPTIONS.find((option) => option.value === normalizedModel) ?? null;
+  return CLAUDE_PREDEFINED_MODELS.OPTIONS.find((option) => option.value === normalizedModel) ?? null;
 };
 
 const CLAUDE_MODELS_QUERY_TIMEOUT_MS = 15_000;
@@ -146,7 +209,7 @@ export const buildClaudeModelsDefinition = (models: ModelInfo[]): ProviderModels
   }
 
   if (options.length === 0) {
-    return CLAUDE_FALLBACK_MODELS;
+    return CLAUDE_PREDEFINED_MODELS;
   }
 
   return {
@@ -287,7 +350,7 @@ export class ClaudeProviderModels implements IProviderModels {
 
       return buildClaudeModelsDefinition(models);
     } catch {
-      return CLAUDE_FALLBACK_MODELS;
+      return CLAUDE_PREDEFINED_MODELS;
     } finally {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);

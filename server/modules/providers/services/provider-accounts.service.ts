@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { userDb } from '@/modules/database/index.js';
-import { providerRegistry } from '@/modules/providers/provider.registry.js';
 import type {
   ProviderAccount,
   ProviderAccountProvider,
@@ -153,8 +152,15 @@ class ProviderAccountsService {
       claude: options.providerHomes?.claude ?? path.join(os.homedir(), '.claude'),
       codex: options.providerHomes?.codex ?? path.join(os.homedir(), '.codex'),
     };
+    // The registry is imported lazily: it pulls in every provider runtime, and
+    // those runtimes import this service back for their per-account credentials.
+    // A top-level import would close that cycle and leave whichever module the
+    // process loads first with an uninitialized binding.
     this.authStatusResolver = options.authStatusResolver ?? (
-      (provider, env) => providerRegistry.resolveProvider(provider).auth.getStatus({ env })
+      async (provider, env) => {
+        const { providerRegistry } = await import('@/modules/providers/provider.registry.js');
+        return providerRegistry.resolveProvider(provider).auth.getStatus({ env });
+      }
     );
     this.globalAccountAccessResolver = options.globalAccountAccessResolver ?? ((userId) => {
       if (userId === null || userId === undefined) {

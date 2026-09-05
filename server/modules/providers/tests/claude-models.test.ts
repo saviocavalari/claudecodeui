@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   buildClaudeModelsDefinition,
   buildClaudeQueryOptions,
-  CLAUDE_FALLBACK_MODELS,
+  CLAUDE_PREDEFINED_MODELS,
 } from '@/modules/providers/list/claude/claude-models.provider.js';
 
 test('buildClaudeModelsDefinition maps SDK model info onto catalog options', () => {
@@ -64,7 +64,7 @@ test('buildClaudeModelsDefinition falls back to the first value when default is 
 });
 
 test('buildClaudeModelsDefinition returns the fallback catalog for an empty list', () => {
-  assert.equal(buildClaudeModelsDefinition([]), CLAUDE_FALLBACK_MODELS);
+  assert.equal(buildClaudeModelsDefinition([]), CLAUDE_PREDEFINED_MODELS);
 });
 
 test('buildClaudeQueryOptions keeps the discovery probe out of real workspaces', () => {

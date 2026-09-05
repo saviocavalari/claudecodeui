@@ -79,8 +79,12 @@ export class ClaudeProviderAuth implements IProviderAuth {
 
   /**
    * Checks Claude credentials in the same priority order used by Claude Code.
+   *
+   * `env` carries the isolated profile of the account being checked
+   * (multi-account support). It defaults to empty, which falls back to the
+   * host-level credentials this server itself runs with.
    */
-  private async checkCredentials(env: Record<string, string>): Promise<ClaudeCredentialsStatus> {
+  private async checkCredentials(env: Record<string, string> = {}): Promise<ClaudeCredentialsStatus> {
     const missingCredentialsError = 'Claude CLI is not authenticated. Run claude /login or configure ANTHROPIC_API_KEY.';
     const configDir = env.CLAUDE_CONFIG_DIR?.trim() || path.join(os.homedir(), '.claude');
     const isolatedProfile = Boolean(env.CLAUDE_CONFIG_DIR?.trim());

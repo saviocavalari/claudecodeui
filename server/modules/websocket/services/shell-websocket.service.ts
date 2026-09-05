@@ -108,6 +108,15 @@ type ShellWebSocketDependencies = {
     provider: string,
   ) => string | null | undefined;
   spawnPty?: typeof pty.spawn;
+  /**
+   * Multi-user project authorization. Defaults to the real database-backed
+   * check; injectable so focused tests can exercise the PTY plumbing without
+   * standing up users and grants.
+   */
+  canAccessProjectPath?: (
+    userId: string | number | null | undefined,
+    projectPath: string | null | undefined,
+  ) => boolean;
 };
 
 /**
@@ -320,7 +329,8 @@ export function handleShellConnection(
         // otherwise drop a member into the app's own directory). Provider login
         // is the one projectless exception, and its command is matched exactly
         // against commands generated for this user's stored accounts.
-        if (!isProviderLogin && !userIdCanAccessProjectPath(userId, projectPath)) {
+        const canAccessProjectPath = dependencies.canAccessProjectPath ?? userIdCanAccessProjectPath;
+        if (!isProviderLogin && !canAccessProjectPath(userId, projectPath)) {
           ws.send(
             JSON.stringify({
               type: 'error',
