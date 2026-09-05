@@ -324,16 +324,23 @@ app.post('/api/system/update', authenticateToken, async (req, res) => {
         // In platform, husky and dev dependencies are not needed
             ? 'npm run update:platform'
             : installMode === 'git'
-                ? 'git checkout main && git pull && npm install'
+                ? 'git checkout main && git pull --ff-only && npm install && npm run build'
                 : 'npm install -g @cloudcli-ai/cloudcli@latest';
 
         const updateCwd = IS_PLATFORM || installMode === 'git'
             ? projectRoot
             : os.homedir();
 
+        // The service runs with NODE_ENV=production, which makes `npm install` skip
+        // devDependencies. Without vite/tsc the build right after would fail, so the
+        // update runs in development mode; `vite build` still emits a production bundle.
+        const updateEnv = IS_PLATFORM || installMode !== 'git'
+            ? process.env
+            : { ...process.env, NODE_ENV: 'development' };
+
         const child = spawn('sh', ['-c', updateCommand], {
             cwd: updateCwd,
-            env: process.env
+            env: updateEnv
         });
 
         let output = '';
