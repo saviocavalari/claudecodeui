@@ -94,7 +94,7 @@ export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMes
       case 'text': {
         const content = msg.content || '';
         const images = Array.isArray(msg.images) && msg.images.length > 0 ? msg.images : undefined;
-        const files = Array.isArray((msg as any).files) && (msg as any).files.length > 0 ? (msg as any).files : undefined;
+        const files = Array.isArray(msg.files) && msg.files.length > 0 ? msg.files : undefined;
         if (!content.trim() && !images && !files) continue;
 
         if (msg.role === 'user') {

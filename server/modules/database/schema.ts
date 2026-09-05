@@ -154,6 +154,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     -- Conversation context carried over from another provider's session; it is
     -- prepended to the first prompt sent on this session and then cleared.
     pending_context TEXT,
+    -- Model this session runs with. Written when the user picks a model for the
+    -- session and on every send, so reopening a session restores the model it
+    -- was last used with instead of falling back to the catalog default.
+    model TEXT,
     isArchived BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

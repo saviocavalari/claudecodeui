@@ -24,7 +24,7 @@ const initialState: LoginFormState = {
  */
 export default function LoginForm() {
   const { t } = useTranslation('auth');
-  const { login, register } = useAuth();
+  const { error: sessionError, login, register } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [formState, setFormState] = useState<LoginFormState>(initialState);
@@ -98,7 +98,7 @@ export default function LoginForm() {
           icon={Lock}
         />
 
-        <AuthErrorAlert errorMessage={errorMessage} />
+        <AuthErrorAlert errorMessage={errorMessage || sessionError || ''} />
 
         <button
           type="submit"

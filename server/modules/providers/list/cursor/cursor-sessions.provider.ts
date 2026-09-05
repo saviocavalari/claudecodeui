@@ -85,7 +85,11 @@ function unwrapUserQueryText(value: string, role: 'user' | 'assistant'): string 
 function extractUserTextAndImages(
   value: string,
   role: 'user' | 'assistant',
-): { text: string; images?: Array<{ path: string; name?: string }>; files?: Array<{ path: string; name?: string }> } {
+): {
+  text: string;
+  images?: Array<{ path: string; name?: string }>;
+  files?: Array<{ path: string; name?: string }>;
+} {
   const unwrapped = unwrapUserQueryText(value, role);
   if (role !== 'user') {
     return { text: unwrapped };

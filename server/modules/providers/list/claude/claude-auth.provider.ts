@@ -102,6 +102,14 @@ export class ClaudeProviderAuth implements IProviderAuth {
       return { authenticated: true, email: 'Configured via settings.json', method: 'api_key' };
     }
 
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()) {
+      return { authenticated: true, email: 'OAuth Token (long-lived)', method: 'environment' };
+    }
+
+    if (readOptionalString(settingsEnv.CLAUDE_CODE_OAUTH_TOKEN)) {
+      return { authenticated: true, email: 'OAuth Token (long-lived)', method: 'environment' };
+    }
+
     try {
       const credPath = path.join(configDir, '.credentials.json');
       const content = await readFile(credPath, 'utf8');

@@ -404,9 +404,17 @@ export class OpenCodeSessionsProvider implements IProviderSessions {
         const rawContent = extractText(partData);
         // User prompts sent with attachments carry an <images_input> path
         // list; strip it for display and surface the paths as images.
-        const parsedImages = messageRole === 'user' ? parseImagesInputTag(rawContent) : { text: rawContent, attachments: [] };
-        const parsedFiles = messageRole === 'user' ? parseFilesInputTag(parsedImages.text) : { text: rawContent, attachments: [] };
-        if (parsedFiles.text.trim() || parsedImages.attachments.length > 0 || parsedFiles.attachments.length > 0) {
+        const parsedImages = messageRole === 'user'
+          ? parseImagesInputTag(rawContent)
+          : { text: rawContent, attachments: [] };
+        const parsedFiles = messageRole === 'user'
+          ? parseFilesInputTag(parsedImages.text)
+          : { text: rawContent, attachments: [] };
+        if (
+          parsedFiles.text.trim()
+          || parsedImages.attachments.length > 0
+          || parsedFiles.attachments.length > 0
+        ) {
           normalized.push(createNormalizedMessage({
             id: baseId,
             sessionId,

@@ -1,5 +1,7 @@
-import { promises as fs } from 'node:fs';
+import fsSync, { promises as fs } from 'node:fs';
 import path from 'node:path';
+
+import mime from 'mime-types';
 
 import { getGlobalImageAssetsDir, toPosixPath } from '@/shared/image-attachments.js';
 
@@ -15,30 +17,8 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/svg+xml',
 ]);
 
-const ALLOWED_FILE_EXTENSIONS = new Set([
-  '.txt',
-  '.md',
-  '.markdown',
-  '.csv',
-  '.tsv',
-  '.json',
-  '.yaml',
-  '.yml',
-  '.xml',
-  '.pdf',
-  '.doc',
-  '.docx',
-  '.xls',
-  '.xlsx',
-  '.ods',
-  '.ppt',
-  '.pptx',
-  '.rtf',
-  '.log',
-]);
-
 // Used only by this service and the assets routes via the barrel file.
-type StoredAsset = {
+type StoredImageAsset = {
   /** Original upload filename, for display. */
   name: string;
   /** Absolute posix-normalized path inside the global assets folder. */
@@ -48,25 +28,18 @@ type StoredAsset = {
 };
 
 // Shape of one multer-stored file; kept local because only this module reads it.
-type UploadedAssetFile = {
+type UploadedImageFile = {
   originalname: string;
   filename: string;
   size: number;
   mimetype: string;
 };
 
+type UploadedAttachmentFile = UploadedImageFile;
+
 /** Returns whether one uploaded mime type may be stored as a chat image asset. */
 export function isAllowedImageMimeType(mimeType: string): boolean {
   return ALLOWED_IMAGE_MIME_TYPES.has(mimeType);
-}
-
-export function isAllowedAttachmentUpload(fileName: string, mimeType: string): boolean {
-  if (isAllowedImageMimeType(mimeType)) {
-    return true;
-  }
-
-  const extension = path.extname(fileName).toLowerCase();
-  return ALLOWED_FILE_EXTENSIONS.has(extension);
 }
 
 /** Creates the global `~/.cloudcli/assets` folder if needed and returns it. */
@@ -81,7 +54,7 @@ export async function ensureImageAssetsDir(): Promise<string> {
  * chat composer. The absolute path is what providers receive and what session
  * history carries back to the UI.
  */
-export function buildStoredAssetRecords(files: UploadedAssetFile[]): StoredAsset[] {
+export function buildStoredImageRecords(files: UploadedImageFile[]): StoredImageAsset[] {
   const assetsDir = getGlobalImageAssetsDir();
   return files.map((file) => ({
     name: file.originalname,
@@ -89,6 +62,15 @@ export function buildStoredAssetRecords(files: UploadedAssetFile[]): StoredAsset
     size: file.size,
     mimeType: file.mimetype,
   }));
+}
+
+/**
+ * Maps multer-stored files to provider-neutral attachment records for the
+ * assets route. The shared storage format intentionally matches image records
+ * so one uploaded file can move through queueing and provider dispatch.
+ */
+export function buildStoredAttachmentRecords(files: UploadedAttachmentFile[]): StoredImageAsset[] {
+  return buildStoredImageRecords(files);
 }
 
 /**
@@ -110,4 +92,36 @@ export function resolveImageAssetFile(filename: string): string | null {
   }
 
   return resolved;
+}
+
+/**
+ * Resolves a general chat attachment for the assets serving route. It shares
+ * the image resolver's strict direct-child containment boundary.
+ */
+export function resolveAttachmentAssetFile(filename: string): string | null {
+  return resolveImageAssetFile(filename);
+}
+
+/**
+ * Opens one stored chat asset for the assets route without exposing arbitrary
+ * filesystem reads. The route translates the lookup status and streams the
+ * returned direct-child file to the authenticated client.
+ */
+export async function openStoredAttachmentAsset(filename: string) {
+  const resolved = resolveAttachmentAssetFile(filename);
+  if (!resolved) {
+    return { status: 'invalid' as const };
+  }
+
+  try {
+    await fs.access(resolved);
+  } catch {
+    return { status: 'missing' as const };
+  }
+
+  return {
+    status: 'found' as const,
+    contentType: mime.lookup(resolved) || 'application/octet-stream',
+    stream: fsSync.createReadStream(resolved),
+  };
 }

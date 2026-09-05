@@ -212,11 +212,19 @@ async function getSessionMessages(
  * - local command payloads (`<command-name>...`) and stdout wrappers
  *   (`<local-command-stdout>...`) should be remapped into normal chat messages
  *   instead of being discarded as internal content
+ *
+ * Skill bodies belong in the first group. When a skill is invoked, Claude
+ * injects the entire SKILL.md as a synthetic user turn. Persisted transcripts
+ * tag it `isMeta: true`, but the live SDK stream does not, so without a
+ * content-level check the same payload renders as a huge user bubble during the
+ * run and then vanishes on reload. The skill is already represented by the
+ * `Skill` tool call, so it is never user-visible content.
  */
 const INTERNAL_CONTENT_PREFIXES = [
   '<system-reminder>',
   'Caveat:',
   '[Request interrupted',
+  'Base directory for this skill:',
 ] as const;
 
 function isInternalContent(content: string): boolean {
@@ -325,6 +333,7 @@ export class ClaudeSessionsProvider implements IProviderSessions {
           }
         }
         let imagesAttached = false;
+        let filesAttached = false;
 
         for (let partIndex = 0; partIndex < raw.message.content.length; partIndex++) {
           const part = raw.message.content[partIndex];
@@ -342,9 +351,12 @@ export class ClaudeSessionsProvider implements IProviderSessions {
               toolUseResult: raw.toolUseResult,
             }));
           } else if (part.type === 'text') {
-            const parsedFiles = parseFilesInputTag(part.text || '');
-            const text = parsedFiles.text || '';
-            if (text && !isInternalContent(text)) {
+            const text = part.text || '';
+            const parsedFiles = parseFilesInputTag(text);
+            if (
+              (parsedFiles.text || parsedFiles.attachments.length > 0)
+              && !isInternalContent(parsedFiles.text)
+            ) {
               messages.push(createNormalizedMessage({
                 id: `${baseId}_text_${partIndex}`,
                 sessionId,
@@ -352,11 +364,14 @@ export class ClaudeSessionsProvider implements IProviderSessions {
                 provider: PROVIDER,
                 kind: 'text',
                 role: 'user',
-                content: text,
+                content: parsedFiles.text,
                 images: !imagesAttached && imageAttachments.length > 0 ? imageAttachments : undefined,
-                files: parsedFiles.attachments.length > 0 ? parsedFiles.attachments : undefined,
+                files: !filesAttached && parsedFiles.attachments.length > 0
+                  ? parsedFiles.attachments
+                  : undefined,
               }));
               imagesAttached = true;
+              filesAttached = filesAttached || parsedFiles.attachments.length > 0;
             }
           }
         }
@@ -398,8 +413,9 @@ export class ClaudeSessionsProvider implements IProviderSessions {
           }));
         }
       } else if (typeof raw.message.content === 'string') {
-        const parsedFiles = parseFilesInputTag(raw.message.content);
-        const text = parsedFiles.text;
+        // Parsed once further down, right before the message is emitted: the
+        // branches in between match against the raw tagged text.
+        const text = raw.message.content;
 
         /**
          * Claude stores compact summaries as synthetic "user" rows so the CLI
@@ -474,7 +490,11 @@ export class ClaudeSessionsProvider implements IProviderSessions {
           return messages;
         }
 
-        if (text && !isInternalContent(text)) {
+        const parsedFiles = parseFilesInputTag(text);
+        if (
+          (parsedFiles.text || parsedFiles.attachments.length > 0)
+          && !isInternalContent(parsedFiles.text)
+        ) {
           messages.push(createNormalizedMessage({
             id: baseId,
             sessionId,
@@ -482,7 +502,7 @@ export class ClaudeSessionsProvider implements IProviderSessions {
             provider: PROVIDER,
             kind: 'text',
             role: 'user',
-            content: text,
+            content: parsedFiles.text,
             files: parsedFiles.attachments.length > 0 ? parsedFiles.attachments : undefined,
           }));
         }

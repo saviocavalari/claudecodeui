@@ -420,6 +420,20 @@ const addSessionCreatorColumns = (db: Database): void => {
   addColumnToTableIfNotExists(db, 'sessions', columnNames, 'created_by_username', 'TEXT');
 };
 
+/**
+ * Adds the `model` column that records which model each session runs with.
+ *
+ * Left NULL for pre-existing rows on purpose: the model resolver falls back to
+ * the provider-native lookup for sessions the app has never sent on, so a
+ * backfilled guess would only mask the real value.
+ */
+const addSessionModelColumn = (db: Database): void => {
+  const sessionsTableInfo = getTableInfo(db, 'sessions');
+  const columnNames = sessionsTableInfo.map((column) => column.name);
+
+  addColumnToTableIfNotExists(db, 'sessions', columnNames, 'model', 'TEXT');
+};
+
 const ensureProjectsForSessionPaths = (db: Database): void => {
   if (!tableExists(db, 'sessions')) {
     return;
@@ -499,6 +513,7 @@ export const runMigrations = (db: Database) => {
     migrateLegacySessionNames(db);
     addProviderSessionIdMapping(db);
     addSessionCreatorColumns(db);
+    addSessionModelColumn(db);
     ensureProjectsForSessionPaths(db);
 
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id)');
