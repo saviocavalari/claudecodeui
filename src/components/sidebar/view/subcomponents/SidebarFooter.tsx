@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Settings, ArrowUpCircle, Bug, AlertTriangle } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { IS_PLATFORM } from '../../../../constants/config';
+
+import { IS_PLATFORM } from '../../../../shared/utils';
 import { useAuth } from '../../../auth/context/AuthContext';
 import { api } from '../../../../utils/api';
-import type { ReleaseInfo } from '../../../../types/sharedTypes';
+import type { ReleaseInfo } from '../../../../shared/types';
 
 const GITHUB_ISSUES_URL = 'https://github.com/siteboon/claudecodeui/issues/new';
 const GITHUB_REPO_URL = 'https://github.com/siteboon/claudecodeui';

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Cloud, ExternalLink, Loader2, MessageSquare, RefreshCw, RotateCcw, Star, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '../../../../constants/branding';
-import { IS_PLATFORM } from '../../../../constants/config';
+import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '../../../../shared/constants';
+import { IS_PLATFORM } from '../../../../shared/utils';
 import { useVersionCheck } from '../../../../hooks/useVersionCheck';
 import { api } from '../../../../utils/api';
 import { useAuth } from '../../../auth/context/AuthContext';

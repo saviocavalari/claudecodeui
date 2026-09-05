@@ -5,7 +5,7 @@ import { ChevronDown, Loader2, Repeat2 } from 'lucide-react';
 
 import { api } from '../../../../utils/api';
 import type { LLMProvider } from '../../../../types/app';
-import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
+import LLMProviderLogo from '../../../llm-provider-logo/LLMProviderLogo';
 
 const PROVIDER_LABELS: Record<LLMProvider, string> = {
   claude: 'Claude',
@@ -172,7 +172,7 @@ export default function ProviderSwitcher({
                 void handleSelect(candidate);
               }}
             >
-              <SessionProviderLogo provider={candidate} className="h-4 w-4 shrink-0" />
+              <LLMProviderLogo provider={candidate} className="h-4 w-4 shrink-0" />
               <span>{PROVIDER_LABELS[candidate]}</span>
             </button>
           ))}
