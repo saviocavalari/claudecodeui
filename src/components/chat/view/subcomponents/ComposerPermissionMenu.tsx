@@ -95,6 +95,7 @@ export default function ComposerPermissionMenu({
 
   const activeAppearance = getAppearance(permissionMode);
   const ActiveIcon = activeAppearance.icon;
+  const activeModeLabel = t(`codex.modes.${permissionMode}`, { defaultValue: permissionMode });
   const heading = t('composer.permissionHeading', {
     provider: providerLabel,
     defaultValue: 'How should {{provider}} actions be approved?',
@@ -109,13 +110,14 @@ export default function ComposerPermissionMenu({
           updateAnchor();
           setIsOpen((current) => !current);
         }}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${activeAppearance.trigger}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-colors sm:w-auto sm:px-2.5 ${activeAppearance.trigger}`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={heading}
         title={t('input.clickToChangeMode')}
       >
         <ActiveIcon className="h-4 w-4" />
+        <span className="hidden whitespace-nowrap sm:inline">{activeModeLabel}</span>
       </button>
 
       {isOpen && anchor && createPortal(

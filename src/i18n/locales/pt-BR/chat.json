@@ -242,5 +242,13 @@
     "heading": "Continuar com:",
     "tooltip": "Continuar esta conversa com outra IA",
     "error": "Não foi possível trocar de IA. Tente novamente."
+  },
+  "composer": {
+    "reasoning": "Raciocínio",
+    "model": "Modelo",
+    "effortDefault": "Padrão",
+    "loadingModels": "Carregando modelos…",
+    "modelMenu": "Selecionar modelo e nível de raciocínio",
+    "permissionHeading": "Como aprovar as ações do {{provider}}?"
   }
 }
