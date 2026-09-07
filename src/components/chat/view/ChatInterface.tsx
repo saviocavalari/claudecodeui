@@ -195,7 +195,6 @@ function ChatInterface({
     isInputFocused,
     commandModalPayload,
     closeCommandModal,
-    showCostModal,
     compactConversation,
   } = useChatComposerState({
     selectedProject,
@@ -429,7 +428,6 @@ function ChatInterface({
           onSelectModel={handleSelectComposerModel}
           modelsLoading={providerModelsLoading}
           tokenBudget={tokenBudget}
-          onShowTokenUsage={showCostModal}
           slashCommandsCount={slashCommandsCount}
           onToggleCommandMenu={handleToggleCommandMenu}
           hasInput={Boolean(input.trim())}

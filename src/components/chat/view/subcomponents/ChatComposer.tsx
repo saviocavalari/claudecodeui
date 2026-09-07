@@ -35,7 +35,6 @@ import ComposerAttachment from './ComposerAttachment';
 import VoiceInputButton from './VoiceInputButton';
 import PermissionRequestsBanner from './PermissionRequestsBanner';
 import ProviderSwitcher from './ProviderSwitcher';
-import TokenUsageSummary from './TokenUsageSummary';
 import QueuedMessageCard from './QueuedMessageCard';
 import ComposerModelMenu from './ComposerModelMenu';
 import ComposerContextMeter from './ComposerContextMeter';
@@ -83,7 +82,6 @@ interface ChatComposerProps {
   onSelectModel: (model: string) => void;
   modelsLoading: boolean;
   tokenBudget: Record<string, unknown> | null;
-  onShowTokenUsage: () => void;
   slashCommandsCount: number;
   onToggleCommandMenu: () => void;
   hasInput: boolean;
@@ -152,7 +150,6 @@ export default function ChatComposer({
   onSelectModel,
   modelsLoading,
   tokenBudget,
-  onShowTokenUsage,
   slashCommandsCount,
   onToggleCommandMenu,
   hasInput,
@@ -445,8 +442,6 @@ export default function ChatComposer({
               <VoiceInputButton state={voiceState} onToggle={voiceToggle} errorMsg={voiceError} />
             )}
 
-            <TokenUsageSummary usage={tokenBudget} onClick={onShowTokenUsage} />
-
             <PromptInputButton
               tooltip={{ content: t('input.showAllCommands') }}
               onClick={onToggleCommandMenu}
@@ -475,14 +470,6 @@ export default function ChatComposer({
           </PromptInputTools>
 
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <div
-              className={`hidden text-xs text-muted-foreground/50 transition-opacity duration-200 lg:block ${
-                input.trim() && !canQueueDraft ? 'opacity-0' : 'opacity-100'
-              }`}
-            >
-              {submitHint}
-            </div>
-
             <ComposerModelMenu
               effort={effort}
               effortOptions={availableEffortOptions}
@@ -533,7 +520,10 @@ export default function ChatComposer({
                       : !input.trim() && attachedFiles.length === 0
               }
               aria-label={submitAriaLabel}
-              title={submitAriaLabel}
+              // The keyboard-shortcut hint used to sit spelled out in the
+              // footer, where it overlapped the buttons on narrow rows. It
+              // lives here now: same information, no clutter.
+              title={`${submitAriaLabel} — ${submitHint}`}
               className="h-10 w-10 sm:h-10 sm:w-10"
             >
               {isTranscribing ? (
