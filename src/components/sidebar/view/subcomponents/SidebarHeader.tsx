@@ -8,8 +8,6 @@ import { cn } from '../../../../lib/utils';
 import { useAuth } from '../../../auth/context/AuthContext';
 import type { SidebarSearchMode } from '../../types/types';
 
-import GitHubStarBadge from './GitHubStarBadge';
-
 const MOD_KEY =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
@@ -76,7 +74,7 @@ export default function SidebarHeader({
         className="truncate text-sm font-bold tracking-tight text-foreground"
         style={{ fontFamily: CLOUDCLI_WORDMARK_FONT_FAMILY }}
       >
-        🦁 NÃO PARA
+        🦁 PharmesCLI
       </h1>
     </div>
   );
@@ -138,8 +136,6 @@ export default function SidebarHeader({
             </Button>
           </div>
         </div>
-
-        <GitHubStarBadge />
 
         {/* Search bar */}
         {showSearchTools && (
