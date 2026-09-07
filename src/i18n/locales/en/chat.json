@@ -144,7 +144,9 @@
     "effortDefault": "Default",
     "loadingModels": "Loading models…",
     "modelMenu": "Select model and reasoning effort",
-    "permissionHeading": "How should {{provider}} actions be approved?"
+    "permissionHeading": "How should {{provider}} actions be approved?",
+    "contextUsed": "{{percentage}}% of the context used ({{used}} of {{total}} tokens). Click to summarize the conversation and free it up.",
+    "compacting": "Summarizing…"
   },
   "providerSelection": {
     "title": "Choose Your AI Assistant",

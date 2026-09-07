@@ -38,6 +38,7 @@ import ProviderSwitcher from './ProviderSwitcher';
 import TokenUsageSummary from './TokenUsageSummary';
 import QueuedMessageCard from './QueuedMessageCard';
 import ComposerModelMenu from './ComposerModelMenu';
+import ComposerContextMeter from './ComposerContextMeter';
 import ComposerPermissionMenu from './ComposerPermissionMenu';
 
 interface MentionableFile {
@@ -71,6 +72,7 @@ interface ChatComposerProps {
   onAbortSession: () => void;
   permissionMode: PermissionMode | string;
   availablePermissionModes: (PermissionMode | string)[];
+  onCompactConversation: () => void;
   onSelectPermissionMode: (mode: PermissionMode | string) => void;
   providerLabel: string;
   effort: string;
@@ -140,6 +142,7 @@ export default function ChatComposer({
   permissionMode,
   availablePermissionModes,
   onSelectPermissionMode,
+  onCompactConversation,
   providerLabel,
   effort,
   availableEffortOptions,
@@ -231,6 +234,21 @@ export default function ChatComposer({
   // recording and send the transcript in one tap, the way the mic button drops it in the box.
   const voiceAvailable = useVoiceAvailable();
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  // Distinguishes a compaction turn from an ordinary one so the meter can say
+  // what it is doing. Cleared when the turn ends, whatever its outcome.
+  const [isCompacting, setIsCompacting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsCompacting(false);
+    }
+  }, [isLoading]);
+
+  const handleCompactConversation = useCallback(() => {
+    setIsCompacting(true);
+    onCompactConversation();
+  }, [onCompactConversation]);
   const voiceErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleVoiceError = useCallback((msg: string) => {
     setVoiceError(msg);
@@ -473,6 +491,13 @@ export default function ChatComposer({
               modelOptions={availableModelOptions}
               onSelectModel={onSelectModel}
               modelsLoading={modelsLoading}
+            />
+
+            <ComposerContextMeter
+              tokenBudget={tokenBudget}
+              onCompact={handleCompactConversation}
+              isCompacting={isCompacting}
+              disabled={isLoading}
             />
 
             <ComposerPermissionMenu

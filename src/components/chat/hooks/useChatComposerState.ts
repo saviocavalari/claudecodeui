@@ -493,6 +493,29 @@ export function useChatComposerState({
     );
   }, [executeCommand]);
 
+  /**
+   * Summarizes the conversation so far to free up the context window.
+   *
+   * `/compact` is deliberately NOT one of the app's built-in commands: those are
+   * intercepted and answered locally, and this one has to reach the provider —
+   * only the CLI can rewrite its own transcript. Sending it as a normal message
+   * is what makes it work.
+   *
+   * The draft in the box is preserved: whatever was being typed is restored
+   * after the command is dispatched, so compacting never eats a message.
+   */
+  const compactConversation = useCallback(() => {
+    const draft = inputValueRef.current;
+    setInput('/compact');
+    inputValueRef.current = '/compact';
+
+    setTimeout(() => {
+      handleSubmitRef.current?.(createFakeSubmitEvent());
+      setInput(draft);
+      inputValueRef.current = draft;
+    }, 0);
+  }, []);
+
   const {
     slashCommands,
     slashCommandsCount,
@@ -1315,5 +1338,6 @@ export function useChatComposerState({
     commandModalPayload,
     closeCommandModal,
     showCostModal,
+    compactConversation,
   };
 }

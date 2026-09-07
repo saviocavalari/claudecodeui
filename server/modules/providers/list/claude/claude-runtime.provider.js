@@ -355,14 +355,39 @@ function readNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/** Context window of a standard Claude model, in tokens. */
+const DEFAULT_CONTEXT_WINDOW = 200_000;
+
+/** Context window of the long-context model variants (the `[1m]` suffix). */
+const LONG_CONTEXT_WINDOW = 1_000_000;
+
+/**
+ * Resolves how much context the running model actually has.
+ *
+ * The env var stays as an explicit override for anyone pinning a value; with
+ * it unset the window follows the model, so the usage meter is not measured
+ * against a fixed number that is wrong for whichever model is in use.
+ *
+ * @param {string|undefined} model - Model id the turn ran with
+ * @returns {number} Context window in tokens
+ */
+function resolveContextWindow(model) {
+  const override = parseInt(process.env.CONTEXT_WINDOW, 10);
+  if (Number.isFinite(override) && override > 0) {
+    return override;
+  }
+  return /\[1m\]/i.test(String(model || '')) ? LONG_CONTEXT_WINDOW : DEFAULT_CONTEXT_WINDOW;
+}
+
 /**
  * Extracts token usage from SDK messages.
  * Prefers per-step `message.usage` (Claude message payload), then falls back
  * to result-level usage/modelUsage for compatibility across SDK versions.
  * @param {Object} sdkMessage - SDK stream message
+ * @param {string} [activeModel] - Model the turn is running with
  * @returns {Object|null} Token budget object or null
  */
-function extractTokenBudget(sdkMessage) {
+function extractTokenBudget(sdkMessage, activeModel) {
   if (!sdkMessage || typeof sdkMessage !== 'object') {
     return null;
   }
@@ -376,7 +401,7 @@ function extractTokenBudget(sdkMessage) {
     const inputTokens = directInputTokens + cacheTokens;
     const outputTokens = readNumber(messageUsage.output_tokens ?? messageUsage.outputTokens);
     const totalUsed = inputTokens + outputTokens;
-    const contextWindow = parseInt(process.env.CONTEXT_WINDOW, 10) || 160000;
+    const contextWindow = resolveContextWindow(activeModel ?? sdkMessage.message?.model);
 
     return {
       used: totalUsed,
@@ -408,7 +433,7 @@ function extractTokenBudget(sdkMessage) {
   const inputTokens = readNumber(modelData.cumulativeInputTokens ?? modelData.inputTokens);
   const outputTokens = readNumber(modelData.cumulativeOutputTokens ?? modelData.outputTokens);
   const totalUsed = inputTokens + outputTokens;
-  const contextWindow = parseInt(process.env.CONTEXT_WINDOW, 10) || 160000;
+  const contextWindow = resolveContextWindow(activeModel ?? modelKey);
 
   return {
     used: totalUsed,
@@ -834,7 +859,7 @@ async function queryClaudeSDK(command, options = {}, ws, context) {
       }
 
       // Extract and send token budget updates from assistant/result usage payloads
-      const tokenBudgetData = extractTokenBudget(message);
+      const tokenBudgetData = extractTokenBudget(message, sdkOptions.model);
       if (tokenBudgetData) {
         ws.send(createNormalizedMessage({ kind: 'status', text: 'token_budget', tokenBudget: tokenBudgetData, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
       }
@@ -1105,5 +1130,9 @@ export {
   getActiveClaudeSDKSessions,
   resolveToolApproval,
   getPendingApprovalsForSession,
-  reconnectSessionWriter
+  reconnectSessionWriter,
+  // Exported for tests: the context meter is only as trustworthy as the window
+  // it measures against.
+  resolveContextWindow,
+  extractTokenBudget
 };

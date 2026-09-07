@@ -249,6 +249,8 @@
     "effortDefault": "Padrão",
     "loadingModels": "Carregando modelos…",
     "modelMenu": "Selecionar modelo e nível de raciocínio",
-    "permissionHeading": "Como aprovar as ações do {{provider}}?"
+    "permissionHeading": "Como aprovar as ações do {{provider}}?",
+    "contextUsed": "{{percentage}}% do contexto usado ({{used}} de {{total}} tokens). Clique para resumir a conversa e liberar espaço.",
+    "compacting": "Resumindo…"
   }
 }
