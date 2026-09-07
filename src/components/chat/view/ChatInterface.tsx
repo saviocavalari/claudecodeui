@@ -13,6 +13,7 @@ import { useChatComposerState } from '../hooks/useChatComposerState';
 import { useSessionStore } from '../../../stores/useSessionStore';
 
 import ChatMessagesPane from './subcomponents/ChatMessagesPane';
+import ProviderUsageBar from './subcomponents/ProviderUsageBar';
 import ChatComposer from './subcomponents/ChatComposer';
 import CommandResultModal from './subcomponents/CommandResultModal';
 
@@ -341,6 +342,7 @@ function ChatInterface({
   return (
     <PermissionContext.Provider value={permissionContextValue}>
       <div className="flex h-full min-h-0 flex-col">
+        <ProviderUsageBar provider={provider} />
         <ChatMessagesPane
           scrollContainerRef={scrollContainerRef}
           isLoadingSessionMessages={isLoadingSessionMessages}

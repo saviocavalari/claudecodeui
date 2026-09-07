@@ -9,6 +9,7 @@ import { providerCapabilitiesService } from '@/modules/providers/services/provid
 import { providerMcpService } from '@/modules/providers/services/mcp.service.js';
 import { providerModelsService } from '@/modules/providers/services/provider-models.service.js';
 import { providerTokenUsageService } from '@/modules/providers/services/provider-token-usage.service.js';
+import { providerUsageLimitsService } from '@/modules/providers/services/provider-usage-limits.service.js';
 import { providerSkillsService } from '@/modules/providers/services/skills.service.js';
 import { sessionConversationsSearchService } from '@/modules/providers/services/session-conversations-search.service.js';
 import { sessionsService } from '@/modules/providers/services/sessions.service.js';
@@ -533,6 +534,15 @@ router.get(
     const provider = parseAccountProvider(req.params.provider);
     const snapshot = await providerAccountsService.listAccounts(provider, readRequestUserId(req));
     res.json(createApiSuccessResponse(snapshot));
+  }),
+);
+
+router.get(
+  '/:provider/usage-limits',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const limits = await providerUsageLimitsService.getUsageLimits(provider, readRequestUserId(req));
+    res.json(createApiSuccessResponse(limits));
   }),
 );
 
