@@ -135,6 +135,7 @@ export function useChatSessionState({
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [totalMessages, setTotalMessages] = useState(0);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+  const isUserScrolledUpRef = useRef(false);
   const [tokenBudget, setTokenBudget] = useState<Record<string, unknown> | null>(null);
   const [visibleMessageCount, setVisibleMessageCount] = useState(INITIAL_VISIBLE_MESSAGES);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
@@ -453,7 +454,9 @@ export function useChatSessionState({
     if (!container) return;
 
     const nearBottom = isNearBottom();
-    setIsUserScrolledUp(!nearBottom);
+    const userScrolledUp = !nearBottom;
+    isUserScrolledUpRef.current = userScrolledUp;
+    setIsUserScrolledUp(userScrolledUp);
     scrollPositionRef.current = {
       height: container.scrollHeight,
       top: container.scrollTop,
@@ -526,6 +529,7 @@ export function useChatSessionState({
     topLoadLockRef.current = false;
     pendingScrollRestoreRef.current = null;
     wasNearTopRef.current = false;
+    isUserScrolledUpRef.current = false;
     setIsUserScrolledUp(false);
   }, [selectedProject?.projectId, selectedSession?.id]);
 
@@ -877,7 +881,7 @@ export function useChatSessionState({
     if (isLoadingMoreRef.current || isLoadingMoreMessages || pendingScrollRestoreRef.current) return;
     if (searchScrollActiveRef.current) return;
 
-    if (!isUserScrolledUp) {
+    if (!isUserScrolledUpRef.current) {
       setTimeout(() => scrollToBottom(), 50);
     }
   }, [chatMessages.length, isActive, isLoadingMoreMessages, isUserScrolledUp, scrollToBottom]);
@@ -885,8 +889,17 @@ export function useChatSessionState({
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    const stopInitialAutoScroll = () => {
+      pendingInitialScrollRef.current = false;
+    };
     container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener('touchstart', stopInitialAutoScroll, { passive: true });
+    container.addEventListener('wheel', stopInitialAutoScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener('touchstart', stopInitialAutoScroll);
+      container.removeEventListener('wheel', stopInitialAutoScroll);
+    };
   }, [handleScroll]);
 
   // "Load all" overlay visibility is driven by scroll-to-top in handleScroll;
