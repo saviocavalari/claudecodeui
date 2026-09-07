@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { LLMProvider } from '../../../../types/app';
 import { authenticatedFetch } from '../../../../utils/api';
@@ -17,6 +17,19 @@ type UsageLimits = {
   windows: UsageWindow[];
 };
 
+/**
+ * Between refreshes the last good reading stays on screen.
+ *
+ * The provider quota endpoints rate limit, so a refusal is routine rather than
+ * a sign that the account has no quota. Blanking the bar on one failed refresh
+ * made it flicker in and out; the numbers move slowly enough that showing the
+ * previous ones for another minute is both accurate and calmer.
+ */
+const REFRESH_INTERVAL_MS = 5 * 60_000;
+
+/** Ignores tab focus changes that land inside this window of the last read. */
+const MIN_REFRESH_GAP_MS = 5 * 60_000;
+
 const colorForRemaining = (remaining: number) => (
   remaining <= 10 ? 'bg-red-500' : remaining <= 30 ? 'bg-amber-500' : 'bg-emerald-500'
 );
@@ -32,6 +45,7 @@ const formatReset = (value: string | null) => {
 
 export default function ProviderUsageBar({ provider }: { provider: LLMProvider }) {
   const [limits, setLimits] = useState<UsageLimits | null>(null);
+  const lastLoadAtRef = useRef(0);
 
   useEffect(() => {
     if (provider !== 'claude' && provider !== 'codex') {
@@ -39,18 +53,34 @@ export default function ProviderUsageBar({ provider }: { provider: LLMProvider }
       return;
     }
     let cancelled = false;
+    // Switching providers must not leave the previous account's numbers up.
+    setLimits(null);
+
     const load = async () => {
+      lastLoadAtRef.current = Date.now();
       try {
         const response = await authenticatedFetch(`/api/providers/${provider}/usage-limits`);
         const payload = await response.json();
-        if (!cancelled) setLimits(payload?.data ?? null);
+        const next = payload?.data as UsageLimits | undefined;
+        if (cancelled) return;
+        // Keep the previous reading when a refresh comes back empty: the
+        // server already serves its own cache, so an unavailable answer here
+        // means it could not reach the provider at all.
+        if (next?.available) {
+          setLimits(next);
+        }
       } catch {
-        if (!cancelled) setLimits(null);
+        // Same reasoning: a failed request is not evidence of no quota.
       }
     };
+
     void load();
-    const timer = window.setInterval(load, 120_000);
-    const refreshVisible = () => document.visibilityState === 'visible' && void load();
+    const timer = window.setInterval(load, REFRESH_INTERVAL_MS);
+    const refreshVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastLoadAtRef.current < MIN_REFRESH_GAP_MS) return;
+      void load();
+    };
     document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       cancelled = true;

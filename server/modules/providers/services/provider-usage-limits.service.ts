@@ -21,7 +21,45 @@ type ProviderUsageLimits = {
   available: boolean;
   fetchedAt: string;
   windows: UsageWindow[];
+  /** True when the reading is a cached one served after a failed refresh. */
+  stale?: boolean;
 };
+
+/**
+ * How long a successful reading is reused before asking the provider again.
+ *
+ * The upstream quota endpoints rate limit hard: measured against the live
+ * endpoint, a burst of calls earns an HTTP 429 that outlasts its own
+ * `retry-after: 0` header by minutes. Five minutes of cache keeps this server
+ * far away from that ceiling no matter how many tabs are open, and is still a
+ * fraction of the shortest quota window (5 hours), so the number on screen
+ * stays accurate to well under a percentage point.
+ */
+const CACHE_TTL_MS = 5 * 60_000;
+
+/**
+ * How long a failed refresh keeps serving the last good reading.
+ *
+ * A quota bar that disappears is worse than one that is a few minutes old: the
+ * user reads "no limit info" as "something is broken". Past this age the entry
+ * is dropped and the bar hides for real, rather than showing a stale number
+ * forever.
+ */
+const STALE_TTL_MS = 15 * 60_000;
+
+type CacheEntry = {
+  value: ProviderUsageLimits;
+  fetchedAtMs: number;
+};
+
+const cache = new Map<string, CacheEntry>();
+
+/** In-flight reads, so concurrent callers share one provider round-trip. */
+const inFlight = new Map<string, Promise<ProviderUsageLimits>>();
+
+/** Cache is per account: each user may run under their own provider login. */
+const cacheKey = (provider: ProviderAccountProvider, userId: string | number | null): string =>
+  `${provider}:${userId ?? 'host'}`;
 
 const clampPercent = (value: unknown): number => {
   const parsed = Number(value);
@@ -48,7 +86,12 @@ async function readClaudeLimits(env: Record<string, string>): Promise<UsageWindo
     },
     signal: AbortSignal.timeout(7_000),
   });
-  if (!response.ok) return [];
+  // Thrown, not swallowed: a refusal here is transient (429 is routine on this
+  // endpoint) and the caller answers it by serving the cached reading. Coming
+  // back as an empty list would read as "this account has no quota info".
+  if (!response.ok) {
+    throw new Error(`Claude usage endpoint returned HTTP ${response.status}`);
+  }
 
   const payload = readObjectRecord(await response.json());
   const current = readObjectRecord(payload?.five_hour);
@@ -129,20 +172,93 @@ async function readCodexLimits(env: Record<string, string>): Promise<UsageWindow
   });
 }
 
+/** Reads the provider's live quota. Replaceable so tests can drive failures. */
+type ReadWindows = (
+  provider: ProviderAccountProvider,
+  userId: string | number | null,
+) => Promise<UsageWindow[]>;
+
+const readWindowsFromProvider: ReadWindows = async (provider, userId) => {
+  const { env } = await providerAccountsService.getRuntimeContext(provider, userId, { requireAccount: false });
+  return provider === 'claude'
+    ? readClaudeLimits(env)
+    : readCodexLimits(env);
+};
+
+async function readFreshLimits(
+  provider: ProviderAccountProvider,
+  userId: string | number | null,
+  key: string,
+  readWindows: ReadWindows,
+): Promise<ProviderUsageLimits> {
+  const windows = await readWindows(provider, userId);
+
+  // An empty window list is not an error — it is an account with nothing to
+  // report — but it must not evict a good reading either, so it is cached
+  // only when there is something to show.
+  const value: ProviderUsageLimits = {
+    provider,
+    available: windows.length > 0,
+    fetchedAt: new Date().toISOString(),
+    windows,
+  };
+  if (value.available) {
+    cache.set(key, { value, fetchedAtMs: Date.now() });
+  }
+  return value;
+}
+
 /** Used by the Providers HTTP route to report the active account's rolling usage quota. */
 export const providerUsageLimitsService = {
+  /** Test seam: drops every cached reading. */
+  resetCache(): void {
+    cache.clear();
+    inFlight.clear();
+  },
+
+  /** Test seam: ages one entry past its TTL without waiting for the clock. */
+  expireCacheForTests(provider: ProviderAccountProvider, userId: string | number | null): void {
+    const entry = cache.get(cacheKey(provider, userId));
+    if (entry) {
+      entry.fetchedAtMs -= CACHE_TTL_MS + 1;
+    }
+  },
+
   async getUsageLimits(
     provider: ProviderAccountProvider,
     userId: string | number | null,
+    readWindows: ReadWindows = readWindowsFromProvider,
   ): Promise<ProviderUsageLimits> {
-    const { env } = await providerAccountsService.getRuntimeContext(provider, userId, { requireAccount: false });
-    try {
-      const windows = provider === 'claude'
-        ? await readClaudeLimits(env)
-        : await readCodexLimits(env);
-      return { provider, available: windows.length > 0, fetchedAt: new Date().toISOString(), windows };
-    } catch {
-      return { provider, available: false, fetchedAt: new Date().toISOString(), windows: [] };
+    const key = cacheKey(provider, userId);
+    const cached = cache.get(key);
+    const age = cached ? Date.now() - cached.fetchedAtMs : Infinity;
+
+    if (cached && age < CACHE_TTL_MS) {
+      return cached.value;
     }
+
+    // Collapse concurrent refreshes: several tabs polling at once should cost
+    // one upstream call, not one per tab.
+    const pending = inFlight.get(key);
+    if (pending) {
+      return pending;
+    }
+
+    const request = readFreshLimits(provider, userId, key, readWindows)
+      .catch((): ProviderUsageLimits => {
+        // The upstream quota endpoints rate limit aggressively. Keep showing
+        // the last good reading rather than blanking the bar on one refusal.
+        if (cached && age < STALE_TTL_MS) {
+          return { ...cached.value, stale: true };
+        }
+        cache.delete(key);
+        return { provider, available: false, fetchedAt: new Date().toISOString(), windows: [] };
+      })
+      .finally(() => {
+        inFlight.delete(key);
+      });
+
+    inFlight.set(key, request);
+    return request;
   },
 };
