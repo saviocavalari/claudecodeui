@@ -1055,6 +1055,8 @@ export type FileTreeServiceDependencies = {
   workspace: FileTreeWorkspaceGateway;
   resolveMimeType(filePath: string): string;
   fileSystemConcurrency: number;
+  /** Optional override for the recursive-listing entry cap; falls back to the service default. */
+  maximumFileTreeEntries?: number;
   logger: FileTreeLogger;
 };
 

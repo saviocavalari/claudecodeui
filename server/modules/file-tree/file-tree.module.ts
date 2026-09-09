@@ -20,11 +20,23 @@ const MAXIMUM_UPLOAD_SIZE_MEGABYTES = 200;
 const MAXIMUM_UPLOAD_SIZE_BYTES = MAXIMUM_UPLOAD_SIZE_MEGABYTES * 1024 * 1024;
 const MAXIMUM_UPLOAD_FILE_COUNT = 20;
 
+// Raised above the service default because this install's project roots include
+// a home directory holding dozens of repositories; `.gitignore` rules trim the
+// caches, and what remains is real source the tree should still show.
+const MAXIMUM_FILE_TREE_ENTRIES = 40_000;
+
 function readFileSystemConcurrency(): number {
   const configuredConcurrency = Number.parseInt(process.env.FS_CONCURRENCY ?? '', 10);
   return Number.isFinite(configuredConcurrency) && configuredConcurrency > 0
     ? configuredConcurrency
     : 64;
+}
+
+function readMaximumFileTreeEntries(): number {
+  const configuredMaximum = Number.parseInt(process.env.FILE_TREE_MAX_ENTRIES ?? '', 10);
+  return Number.isFinite(configuredMaximum) && configuredMaximum > 0
+    ? configuredMaximum
+    : MAXIMUM_FILE_TREE_ENTRIES;
 }
 
 /**
@@ -85,6 +97,7 @@ const fileTreeServices = createFileTreeService({
   workspace: fileTreeWorkspace,
   resolveMimeType: (filePath) => mime.lookup(filePath) || 'application/octet-stream',
   fileSystemConcurrency: readFileSystemConcurrency(),
+  maximumFileTreeEntries: readMaximumFileTreeEntries(),
   logger: fileTreeLogger,
 });
 
