@@ -1,0 +1,536 @@
+import { memo, useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Edit3,
+  FolderInput,
+  MoreVertical,
+  SmilePlus,
+  Star,
+  Trash2,
+  X,
+} from 'lucide-react';
+import type { TFunction } from 'i18next';
+
+import { ActionMenu, Button } from '@/shared/ui';
+import { cn } from '@/shared/utils';
+import { useAuth } from '@/modules/auth';
+import type { LLMProvider, MCPServerStatus, Project, ProjectSession, SessionWithProvider } from '@/shared/types';
+import { getTaskIndicatorStatus } from '@/modules/sidebar/utils/sidebarProjectFormatting';
+import TaskIndicator from '@/modules/sidebar/TaskIndicator';
+import SidebarProjectSessions from '@/modules/sidebar/SidebarProjectSessions';
+import ProjectEmojiModal from '@/modules/sidebar/ProjectEmojiModal';
+import ProjectFolderModal from '@/modules/sidebar/ProjectFolderModal';
+import { useCompactSidebar } from '@/modules/sidebar/hooks/useCompactSidebar';
+
+type SidebarProjectItemProps = {
+  project: Project;
+  selectedProject: Project | null;
+  selectedSession: ProjectSession | null;
+  isExpanded: boolean;
+  isDeleting: boolean;
+  isStarred: boolean;
+  /** Resolved for this row: only the project being renamed re-renders on a keystroke. */
+  isEditing: boolean;
+  renameDraft: string;
+  sessions: SessionWithProvider[];
+  initialSessionsLoaded: boolean;
+  isLoadingMoreSessions: boolean;
+  currentTime: Date;
+  /** The session being renamed, when it belongs to this project. */
+  sessionRenameId: string | null;
+  sessionRenameDraft: string;
+  tasksEnabled: boolean;
+  mcpServerStatus: MCPServerStatus;
+  onRenameDraftChange: (name: string) => void;
+  onToggleProject: (projectName: string) => void;
+  onProjectSelect: (project: Project) => void;
+  onToggleStarProject: (projectName: string) => void;
+  onStartEditingProject: (project: Project) => void;
+  onCancelEditingProject: () => void;
+  onSaveProjectName: (projectId: string, nextName: string) => void;
+  onSaveProjectEmoji: (projectId: string, emoji: string | null) => void;
+  onSaveProjectFolder: (projectId: string, folder: string | null) => void;
+  existingFolders: string[];
+  onDeleteProject: (project: Project) => void;
+  onSessionSelect: (session: SessionWithProvider, projectName: string) => void;
+  onDeleteSession: (sessionId: string, sessionTitle: string) => void;
+  onForkSession?: (session: SessionWithProvider) => void;
+  onLoadMoreSessions: (projectId: string) => void;
+  activeSessions: ReadonlySet<string>;
+  attentionSessionIds: ReadonlySet<string>;
+  onNewSession: (project: Project) => void;
+  onStartEditingSession: (projectId: string, sessionId: string, initialName: string) => void;
+  onCancelEditingSession: () => void;
+  onSaveEditingSession: (projectName: string, sessionId: string, summary: string, provider: LLMProvider) => void;
+  t: TFunction;
+};
+
+const getSessionCountDisplay = (project: Project, sessions: SessionWithProvider[]): string => {
+  const total = Number(project.sessionMeta?.total ?? sessions.length);
+  return String(total);
+};
+
+/** Rendered by SidebarProjectList for one project row, including its expand, rename, star and delete controls. */
+function SidebarProjectItem({
+  project,
+  selectedProject,
+  selectedSession,
+  isExpanded,
+  isDeleting,
+  isStarred,
+  isEditing,
+  renameDraft,
+  sessions,
+  initialSessionsLoaded,
+  isLoadingMoreSessions,
+  currentTime,
+  sessionRenameId,
+  sessionRenameDraft,
+  tasksEnabled,
+  mcpServerStatus,
+  onRenameDraftChange,
+  onToggleProject,
+  onProjectSelect,
+  onToggleStarProject,
+  onStartEditingProject,
+  onCancelEditingProject,
+  onSaveProjectName,
+  onSaveProjectEmoji,
+  onSaveProjectFolder,
+  existingFolders,
+  onDeleteProject,
+  onSessionSelect,
+  onDeleteSession,
+  onForkSession,
+  onLoadMoreSessions,
+  activeSessions,
+  attentionSessionIds,
+  onNewSession,
+  onStartEditingSession,
+  onCancelEditingSession,
+  onSaveEditingSession,
+  t,
+}: SidebarProjectItemProps) {
+  // Project identity is tracked by the DB-assigned `projectId` everywhere
+  // after the projectName → projectId migration.
+  const isSelected = selectedProject?.projectId === project.projectId;
+  // Project management (rename/delete/emoji/folder/star) is admin-only; members
+  // only open and use the projects granted to them.
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [showEmojiModal, setShowEmojiModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const projectEmoji = typeof project.emoji === 'string' && project.emoji.length > 0 ? project.emoji : null;
+  const projectFolder = typeof project.folder === 'string' && project.folder.length > 0 ? project.folder : null;
+  const totalSessionCount = Number(project.sessionMeta?.total ?? sessions.length);
+  const sessionCountDisplay = getSessionCountDisplay(project, sessions);
+  const sessionCountLabel = `${sessionCountDisplay} session${totalSessionCount === 1 ? '' : 's'}`;
+  const taskStatus = getTaskIndicatorStatus(project, mcpServerStatus);
+  const mobileRenameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing || !mobileRenameInputRef.current) {
+      return;
+    }
+
+    let animationFrame = 0;
+    const revealInput = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        mobileRenameInputRef.current?.scrollIntoView({ block: 'center', inline: 'nearest' });
+      });
+    };
+
+    revealInput();
+    window.visualViewport?.addEventListener('resize', revealInput);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.visualViewport?.removeEventListener('resize', revealInput);
+    };
+  }, [isEditing]);
+
+  const isCompact = useCompactSidebar();
+
+  const toggleProject = () => onToggleProject(project.projectId);
+  const toggleStarProject = () => onToggleStarProject(project.projectId);
+
+  const saveProjectName = () => {
+    onSaveProjectName(project.projectId, renameDraft);
+  };
+
+  const selectAndToggleProject = () => {
+    if (selectedProject?.projectId !== project.projectId) {
+      onProjectSelect(project);
+    }
+
+    toggleProject();
+  };
+
+  const projectActionItems = [
+    {
+      key: 'emoji',
+      label: t('tooltips.setEmoji'),
+      icon: SmilePlus,
+      onSelect: () => setShowEmojiModal(true),
+    },
+    {
+      key: 'folder',
+      label: t('tooltips.setFolder'),
+      icon: FolderInput,
+      onSelect: () => setShowFolderModal(true),
+    },
+    {
+      key: 'rename',
+      label: t('projects.renameProject'),
+      icon: Edit3,
+      onSelect: () => onStartEditingProject(project),
+    },
+    {
+      key: 'delete',
+      label: t('projects.deleteProject'),
+      icon: Trash2,
+      onSelect: () => onDeleteProject(project),
+      isDanger: true,
+      showDividerBefore: true,
+    },
+  ];
+
+  return (
+    <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
+      <div className="md:group group">
+        {isCompact && (
+        <div>
+          <div
+            className={cn(
+              'p-3 mx-3 my-1 rounded-lg bg-card border border-border/50 active:scale-[0.98] transition-all duration-150',
+              isSelected && 'bg-primary/5 border-primary/20',
+              isStarred &&
+                !isSelected &&
+                'bg-yellow-50/50 dark:bg-yellow-900/5 border-yellow-200/30 dark:border-yellow-800/30',
+            )}
+            onClick={toggleProject}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <button
+                  className={cn(
+                    'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 border',
+                    isAdmin && 'active:scale-90',
+                    isStarred
+                      ? 'bg-yellow-500/10 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800'
+                      : 'bg-gray-500/10 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800',
+                  )}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (isAdmin) toggleStarProject();
+                  }}
+                  title={
+                    isAdmin
+                      ? isStarred
+                        ? t('tooltips.removeFromFavorites')
+                        : t('tooltips.addToFavorites')
+                      : undefined
+                  }
+                >
+                  <Star
+                    className={cn(
+                      'w-4 h-4 transition-colors',
+                      isStarred
+                        ? 'text-yellow-600 dark:text-yellow-400 fill-current'
+                        : 'text-gray-600 dark:text-gray-400',
+                    )}
+                  />
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  {isEditing ? (
+                    <input
+                      ref={mobileRenameInputRef}
+                      type="text"
+                      value={renameDraft}
+                      onChange={(event) => onRenameDraftChange(event.target.value)}
+                      className="w-full rounded-lg border-2 border-primary/40 bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-all duration-200 focus:border-primary focus:shadow-md focus:outline-none"
+                      placeholder={t('projects.projectNamePlaceholder')}
+                      autoFocus
+                      autoComplete="off"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          saveProjectName();
+                        }
+
+                        if (event.key === 'Escape') {
+                          onCancelEditingProject();
+                        }
+                      }}
+                      style={{
+                        fontSize: '16px',
+                        WebkitAppearance: 'none',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center justify-between">
+                        <h3 className="truncate text-sm font-normal text-foreground">
+                          {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
+                          {project.displayName}
+                        </h3>
+                        {tasksEnabled && (
+                          <TaskIndicator
+                            status={taskStatus}
+                            size="xs"
+                            className="ml-2 hidden flex-shrink-0 md:inline-flex"
+                          />
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{sessionCountLabel}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {isEditing ? (
+                  <>
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500 shadow-sm transition-all duration-150 active:scale-90 active:shadow-none dark:bg-green-600"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        saveProjectName();
+                      }}
+                    >
+                      <Check className="h-4 w-4 text-white" />
+                    </button>
+                    <button
+                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-500 shadow-sm transition-all duration-150 active:scale-90 active:shadow-none dark:bg-gray-600"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onCancelEditingProject();
+                      }}
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isAdmin && (
+                      <div onClick={(event) => event.stopPropagation()}>
+                        <ActionMenu
+                          label={t('projects.projectActions')}
+                          ariaLabel={t('projects.projectActionsFor', { project: project.displayName })}
+                          items={projectActionItems}
+                          icon={MoreVertical}
+                          iconOnly
+                          size="icon"
+                          variant="ghost"
+                          triggerClassName="h-8 w-8 rounded-lg border border-border bg-muted/40 p-0 active:scale-90"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted/30">
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {!isCompact && (
+        <div className="relative hidden md:block">
+          <Button
+            variant="ghost"
+            className={cn(
+              'h-auto w-full items-center p-2 font-normal hover:bg-accent/50',
+              !isEditing && isAdmin && 'pr-10',
+              isSelected && 'bg-accent text-accent-foreground',
+              isStarred &&
+                !isSelected &&
+                'bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/20',
+            )}
+            onClick={selectAndToggleProject}
+          >
+            <div className="flex w-full items-center gap-3">
+              <div
+                className={cn(
+                  'w-6 h-6 flex flex-shrink-0 items-center justify-center rounded transition-all duration-200',
+                  isAdmin && 'cursor-pointer',
+                  isStarred
+                    ? isAdmin && 'hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
+                    : cn('opacity-40', isAdmin && 'hover:opacity-100 hover:bg-accent'),
+                )}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isAdmin) toggleStarProject();
+                }}
+                title={
+                  isAdmin
+                    ? isStarred
+                      ? t('tooltips.removeFromFavorites')
+                      : t('tooltips.addToFavorites')
+                    : undefined
+                }
+              >
+                <Star
+                  className={cn(
+                    'w-3 h-3 transition-colors',
+                    isStarred
+                      ? 'text-yellow-600 dark:text-yellow-400 fill-current'
+                      : 'text-muted-foreground',
+                  )}
+                />
+              </div>
+
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={renameDraft}
+                  onChange={(event) => onRenameDraftChange(event.target.value)}
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground focus:ring-2 focus:ring-primary/20"
+                  placeholder={t('projects.projectNamePlaceholder')}
+                  autoFocus
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      saveProjectName();
+                    }
+                    if (event.key === 'Escape') {
+                      onCancelEditingProject();
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  className="min-w-0 flex-1 truncate text-left text-sm font-medium text-foreground"
+                  title={project.displayName}
+                >
+                  {projectEmoji && <span className="mr-1.5">{projectEmoji}</span>}
+                  {project.displayName}
+                </div>
+              )}
+
+              {!isEditing && (
+                <span className="flex-shrink-0 text-xs text-muted-foreground">
+                  {sessionCountDisplay}
+                </span>
+              )}
+
+              {isEditing ? (
+                <div className="flex flex-shrink-0 items-center gap-1">
+                  <div
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-green-600 transition-colors hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-900/20"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      saveProjectName();
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </div>
+                  <div
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center rounded text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-gray-800"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCancelEditingProject();
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-shrink-0">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                  )}
+                </div>
+              )}
+            </div>
+          </Button>
+
+          {!isEditing && isAdmin && (
+            <ActionMenu
+              label={t('projects.projectActions')}
+              ariaLabel={t('projects.projectActionsFor', { project: project.displayName })}
+              items={projectActionItems}
+              icon={MoreVertical}
+              iconOnly
+              size="icon"
+              variant="ghost"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
+              triggerClassName="h-7 w-7 rounded-md p-0 text-muted-foreground opacity-60 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            />
+          )}
+        </div>
+        )}
+      </div>
+
+      <SidebarProjectSessions
+        project={project}
+        isExpanded={isExpanded}
+        sessions={sessions}
+        selectedSession={selectedSession}
+        initialSessionsLoaded={initialSessionsLoaded}
+        hasMoreSessions={Boolean(project.sessionMeta?.hasMore)}
+        isLoadingMoreSessions={isLoadingMoreSessions}
+        activeSessions={activeSessions}
+        attentionSessionIds={attentionSessionIds}
+        currentTime={currentTime}
+        sessionRenameId={sessionRenameId}
+        sessionRenameDraft={sessionRenameDraft}
+        onRenameDraftChange={onRenameDraftChange}
+        onStartEditingSession={onStartEditingSession}
+        onCancelEditingSession={onCancelEditingSession}
+        onSaveEditingSession={onSaveEditingSession}
+        onProjectSelect={onProjectSelect}
+        onSessionSelect={onSessionSelect}
+        onDeleteSession={onDeleteSession}
+        onForkSession={onForkSession}
+        onLoadMoreSessions={onLoadMoreSessions}
+        onNewSession={onNewSession}
+        t={t}
+      />
+
+      {showEmojiModal && (
+        <ProjectEmojiModal
+          projectDisplayName={project.displayName}
+          currentEmoji={projectEmoji}
+          onClose={() => setShowEmojiModal(false)}
+          onSelect={(emoji) => onSaveProjectEmoji(project.projectId, emoji)}
+          t={t}
+        />
+      )}
+
+      {showFolderModal && (
+        <ProjectFolderModal
+          projectDisplayName={project.displayName}
+          currentFolder={projectFolder}
+          existingFolders={existingFolders}
+          onClose={() => setShowFolderModal(false)}
+          onSelect={(folder) => onSaveProjectFolder(project.projectId, folder)}
+          t={t}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Memoized: a websocket session delta re-renders the sidebar roughly every
+ * 0.5-2s during a run, and a rename keystroke re-renders it per character.
+ *
+ * Both renames are resolved to scalars by SidebarProjectList and the sorted
+ * session array is cached per project, so a keystroke changes props on exactly
+ * one row and every other row's compare succeeds. See sidebarRowProps.test.tsx.
+ */
+export default memo(SidebarProjectItem);

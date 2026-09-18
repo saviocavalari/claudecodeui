@@ -23,11 +23,11 @@ test('mapPermissionModeToCodexOptions maps UI permission modes onto Codex sandbo
   });
   assert.deepEqual(mapPermissionModeToCodexOptions('default'), {
     sandboxMode: 'workspace-write',
-    approvalPolicy: 'untrusted',
+    approvalPolicy: 'on-request',
   });
   assert.deepEqual(mapPermissionModeToCodexOptions(undefined), {
     sandboxMode: 'workspace-write',
-    approvalPolicy: 'untrusted',
+    approvalPolicy: 'on-request',
   });
 });
 
