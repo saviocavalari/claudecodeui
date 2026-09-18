@@ -7,6 +7,7 @@ import {
   PROJECTS_TABLE_SCHEMA_SQL,
   ACTIVITY_LOG_TABLE_SCHEMA_SQL,
   PROVIDER_MODELS_TABLE_SCHEMA_SQL,
+  PROVIDER_ACCOUNT_ACCESS_TABLE_SCHEMA_SQL,
   PUSH_SUBSCRIPTIONS_TABLE_SCHEMA_SQL,
   SESSION_DRAFTS_TABLE_SCHEMA_SQL,
   SUPERSEDED_PROVIDER_SESSIONS_TABLE_SCHEMA_SQL,
@@ -546,6 +547,8 @@ export const runMigrations = (db: Database) => {
     db.exec('CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_user_channel ON notification_channel_endpoints(user_id, channel)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_notification_channel_endpoints_enabled ON notification_channel_endpoints(enabled)');
     db.exec(PROVIDER_MODELS_TABLE_SCHEMA_SQL);
+    db.exec(PROVIDER_ACCOUNT_ACCESS_TABLE_SCHEMA_SQL);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_provider_account_access_grantee ON provider_account_access(grantee_user_id, provider)');
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_provider_models_provider_order
       ON provider_models(provider, sort_order, id)

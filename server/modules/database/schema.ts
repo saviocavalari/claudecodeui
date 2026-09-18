@@ -33,6 +33,21 @@ CREATE TABLE IF NOT EXISTS user_projects (
 );
 `;
 
+/** Per-account grants; credentials remain stored only in the owner's private provider directory. */
+export const PROVIDER_ACCOUNT_ACCESS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS provider_account_access (
+    owner_user_id INTEGER NOT NULL,
+    provider TEXT NOT NULL CHECK(provider IN ('claude', 'codex')),
+    profile_id TEXT NOT NULL,
+    grantee_user_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (owner_user_id, provider, profile_id, grantee_user_id),
+    FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (grantee_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CHECK(owner_user_id <> grantee_user_id)
+);
+`;
+
 export const API_KEYS_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS api_keys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

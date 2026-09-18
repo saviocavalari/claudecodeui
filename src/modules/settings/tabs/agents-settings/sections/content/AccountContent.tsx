@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Loader2, LogIn, Plus, RefreshCw, Trash2, UserRound } from 'lucide-react';
+import { Check, Loader2, LogIn, Plus, RefreshCw, Share2, Trash2, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { authenticatedFetch } from '@/shared/api';
@@ -32,6 +32,11 @@ type ProviderAccount = {
   method: string | null;
   error: string | null;
   coolingUntil: string | null;
+  ownerUserId: number | null;
+  ownerUsername: string | null;
+  isOwner: boolean;
+  canManage: boolean;
+  grantedUserIds: number[];
 };
 
 type AccountsSnapshot = {
@@ -40,6 +45,7 @@ type AccountsSnapshot = {
   autoSwitch: boolean;
   allowGlobalAccount: boolean;
   accounts: ProviderAccount[];
+  shareUsers: { id: number; username: string }[];
 };
 
 type ApiResponse<T> = {
@@ -100,6 +106,7 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [busyAccountId, setBusyAccountId] = useState<string | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [sharingAccountId, setSharingAccountId] = useState<string | null>(null);
 
   const notifyAuthChanged = useCallback(() => {
     window.dispatchEvent(new CustomEvent('provider-auth-changed', {
@@ -227,6 +234,22 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
     } catch (error) {
       setSnapshot({ ...snapshot, autoSwitch: !enabled });
       setAccountsError(error instanceof Error ? error.message : 'Não foi possível salvar a troca automática.');
+    }
+  };
+
+  const updateAccountAccess = async (account: ProviderAccount, userIds: number[]) => {
+    setBusyAccountId(account.id);
+    setAccountsError(null);
+    try {
+      const response = await authenticatedFetch(
+        `/api/providers/${agent}/accounts/${encodeURIComponent(account.id)}/access`,
+        { method: 'PUT', body: JSON.stringify({ userIds }) },
+      );
+      setSnapshot(await readApiData<AccountsSnapshot>(response));
+    } catch (error) {
+      setAccountsError(error instanceof Error ? error.message : 'Não foi possível alterar o acesso à conta.');
+    } finally {
+      setBusyAccountId(null);
     }
   };
 
@@ -369,6 +392,11 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
                           ? account.email || t('agents.authStatus.authenticatedUser')
                           : t('agents.authStatus.notConnected')}
                       </div>
+                      {!account.isOwner && account.ownerUsername && (
+                        <div className="truncate text-xs text-blue-600 dark:text-blue-400">
+                          Compartilhada por {account.ownerUsername}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       {!account.isActive && account.authenticated && (
@@ -384,16 +412,29 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
                             : <Check className="h-4 w-4" />}
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={busyAccountId !== null}
-                        onClick={() => void loginAccount(account)}
-                        title={t('agents.multipleAccounts.login', { defaultValue: 'Entrar novamente' })}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </Button>
-                      {!account.isDefault && (
+                      {account.canManage && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyAccountId !== null}
+                          onClick={() => setSharingAccountId((current) => current === account.id ? null : account.id)}
+                          title="Liberar esta conta para outros usuários"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {(account.isDefault || account.canManage) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyAccountId !== null}
+                          onClick={() => void loginAccount(account)}
+                          title={t('agents.multipleAccounts.login', { defaultValue: 'Entrar novamente' })}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {account.canManage && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -406,6 +447,39 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
                         </Button>
                       )}
                     </div>
+                    {account.canManage && sharingAccountId === account.id && (
+                      <div className="w-full border-t border-border/60 pt-3">
+                        <div className="mb-2 text-xs font-medium text-foreground">
+                          Usuários que podem utilizar esta conta
+                        </div>
+                        {snapshot.shareUsers.length === 0 ? (
+                          <div className="text-xs text-muted-foreground">Não há outros usuários ativos.</div>
+                        ) : (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {snapshot.shareUsers.map((user) => (
+                              <label key={user.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={account.grantedUserIds.includes(user.id)}
+                                  disabled={busyAccountId !== null}
+                                  onChange={(event) => {
+                                    const next = event.target.checked
+                                      ? [...account.grantedUserIds, user.id]
+                                      : account.grantedUserIds.filter((id) => id !== user.id);
+                                    void updateAccountAccess(account, next);
+                                  }}
+                                  className="h-4 w-4 rounded border-border"
+                                />
+                                <span>{user.username}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          O usuário poderá usar a conta, mas não terá acesso à credencial nem às suas conversas.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}

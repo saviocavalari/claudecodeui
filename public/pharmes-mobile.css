@@ -51,6 +51,38 @@ body.pwa-mode #root {
    composer, em vez de flutuar por cima da ultima mensagem. A safe area fica
    somente no composer, evitando o espaco inferior duplicado no iPhone. */
 @media screen and (max-width: 767px) {
+  /* Os atalhos Pharmes sao anexados ao flex principal do cabecalho. Nesse
+     breakpoint o app transforma esse flex em coluna; sem posicionamento
+     explicito, cada botao passa a ocupar uma linha inteira. Mantemos os tres
+     na linha do titulo e reservamos apenas a largura horizontal necessaria. */
+  .pwa-header-safe > .flex {
+    position: relative;
+  }
+
+  .pwa-header-safe > .flex > .flex:first-child {
+    padding-right: 104px;
+  }
+
+  #ph-con-btn,
+  #ph-sec-btn,
+  #ph-fab.ph-dock {
+    position: absolute !important;
+    top: 1px;
+    margin: 0 !important;
+  }
+
+  #ph-con-btn {
+    right: 72px;
+  }
+
+  #ph-sec-btn {
+    right: 36px;
+  }
+
+  #ph-fab.ph-dock {
+    right: 0;
+  }
+
   body.pwa-mode .chat-composer-shell {
     padding: 0 8px calc(2px + env(safe-area-inset-bottom, 0px)) !important;
     background: linear-gradient(to bottom, transparent, hsl(var(--background) / 0.96) 14px);

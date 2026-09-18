@@ -699,6 +699,16 @@ export type ProviderAccount = {
   error: string | null;
   createdAt: string | null;
   coolingUntil: string | null;
+  ownerUserId: number | null;
+  ownerUsername: string | null;
+  isOwner: boolean;
+  canManage: boolean;
+  grantedUserIds: number[];
+};
+
+export type ProviderAccountShareUser = {
+  id: number;
+  username: string;
 };
 
 export type ProviderAccountsSnapshot = {
@@ -707,6 +717,7 @@ export type ProviderAccountsSnapshot = {
   autoSwitch: boolean;
   allowGlobalAccount: boolean;
   accounts: ProviderAccount[];
+  shareUsers: ProviderAccountShareUser[];
 };
 
 // ---------------------------

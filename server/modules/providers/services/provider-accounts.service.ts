@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, stat, symlink, writeFile } from 'node:fs/p
 import os from 'node:os';
 import path from 'node:path';
 
-import { userDb } from '@/modules/database/index.js';
+import { providerAccountAccessDb, userDb } from '@/modules/database/index.js';
 import type {
   ProviderAccount,
   ProviderAccountProvider,
@@ -22,9 +22,18 @@ type StoredProfile = {
 type StoredState = {
   version: 1;
   activeProfileId: string;
+  activeOwnerUserId?: number | null;
   autoSwitch: boolean;
   defaultCoolingUntil?: string | null;
   profiles: StoredProfile[];
+};
+
+type AccessibleProfile = StoredProfile & {
+  ownerUserId: number | null;
+  ownerUsername: string | null;
+  isDefault: boolean;
+  isOwner: boolean;
+  grantedUserIds: number[];
 };
 
 type RuntimeContext = {
@@ -66,10 +75,16 @@ const SHARED_CONFIG_ENTRIES: Record<ProviderAccountProvider, string[]> = {
 const createInitialState = (): StoredState => ({
   version: 1,
   activeProfileId: DEFAULT_PROFILE_ID,
+  activeOwnerUserId: null,
   autoSwitch: true,
   defaultCoolingUntil: null,
   profiles: [],
 });
+
+const readNumericUserId = (userId: string | number | null | undefined): number | null => {
+  const parsed = Number(userId);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
 
 const normalizeName = (value: unknown, fallback: string): string => {
   if (typeof value !== 'string') {
@@ -187,51 +202,54 @@ class ProviderAccountsService {
     userId: string | number | null | undefined,
   ): Promise<ProviderAccountsSnapshot> {
     const state = await this.readState(provider, userId);
-    const allowGlobalAccount = await this.canUseGlobalAccount(userId);
-    if (
-      !allowGlobalAccount
-      && state.activeProfileId === DEFAULT_PROFILE_ID
-      && state.profiles[0]
-    ) {
-      state.activeProfileId = state.profiles[0].id;
+    const accessible = await this.listAccessibleProfiles(provider, userId, state);
+    let active = accessible.find((profile) => (
+      profile.id === state.activeProfileId
+      && profile.ownerUserId === (state.activeOwnerUserId ?? (profile.isDefault ? null : readNumericUserId(userId)))
+    ));
+    if (!active) {
+      active = accessible[0];
+      state.activeProfileId = active?.id ?? DEFAULT_PROFILE_ID;
+      state.activeOwnerUserId = active?.ownerUserId ?? null;
       await this.writeState(provider, userId, state);
     }
-    const storedProfiles: StoredProfile[] = [
-      ...(allowGlobalAccount ? [{
-        id: DEFAULT_PROFILE_ID,
-        name: 'Conta principal',
-        createdAt: '',
-        coolingUntil: state.defaultCoolingUntil ?? null,
-      }] : []),
-      ...state.profiles,
-    ];
-    const activeProfileId = state.activeProfileId === DEFAULT_PROFILE_ID && !allowGlobalAccount
-      ? null
-      : state.activeProfileId;
 
-    const accounts = await Promise.all(storedProfiles.map(async (profile): Promise<ProviderAccount> => {
-      const env = this.getProfileEnv(provider, userId, profile.id);
+    const accounts = await Promise.all(accessible.map(async (profile): Promise<ProviderAccount> => {
+      const env = this.getProfileEnv(provider, profile.ownerUserId, profile.id);
       const status = await this.authStatusResolver(provider, env);
       return {
         id: profile.id,
         name: profile.name,
-        isDefault: profile.id === DEFAULT_PROFILE_ID,
-        isActive: profile.id === activeProfileId,
+        isDefault: profile.isDefault,
+        isActive: profile.id === active?.id && profile.ownerUserId === active.ownerUserId,
         authenticated: status.authenticated,
         email: status.email,
         method: status.method,
         error: status.error ?? null,
         createdAt: profile.createdAt || null,
         coolingUntil: profile.coolingUntil ?? null,
+        ownerUserId: profile.ownerUserId,
+        ownerUsername: profile.ownerUsername,
+        isOwner: profile.isOwner,
+        canManage: profile.isOwner && !profile.isDefault,
+        grantedUserIds: profile.grantedUserIds,
       };
     }));
 
+    const currentUserId = readNumericUserId(userId);
+    const shareUsers = currentUserId === null
+      ? []
+      : userDb.listUsers()
+        .filter((user) => user.is_active === 1 && user.id !== currentUserId)
+        .map((user) => ({ id: user.id, username: user.username }));
+
     return {
       provider,
-      activeProfileId,
+      activeProfileId: active?.id ?? null,
       autoSwitch: state.autoSwitch,
-      allowGlobalAccount,
+      allowGlobalAccount: await this.canUseGlobalAccount(userId),
       accounts,
+      shareUsers,
     };
   }
 
@@ -253,6 +271,7 @@ class ProviderAccountsService {
     await this.prepareProfileDirectory(provider, userId, id);
     state.profiles.push(profile);
     state.activeProfileId = id;
+    state.activeOwnerUserId = readNumericUserId(userId);
     await this.writeState(provider, userId, state);
 
     return {
@@ -267,6 +286,13 @@ class ProviderAccountsService {
         error: null,
         createdAt: profile.createdAt,
         coolingUntil: null,
+        ownerUserId: readNumericUserId(userId),
+        ownerUsername: readNumericUserId(userId) !== null
+          ? userDb.getUserById(readNumericUserId(userId) as number)?.username ?? null
+          : null,
+        isOwner: true,
+        canManage: true,
+        grantedUserIds: [],
       },
       loginCommand: this.buildLoginCommand(provider, userId, id),
     };
@@ -327,14 +353,18 @@ class ProviderAccountsService {
     const state = await this.readState(provider, userId);
     if (profileId === DEFAULT_PROFILE_ID) {
       await this.requireGlobalAccountAccess(userId);
-    } else {
-      this.requireStoredProfile(state, profileId);
     }
+    const accessible = await this.listAccessibleProfiles(provider, userId, state);
+    const selected = accessible.find((profile) => profile.id === profileId);
+    if (!selected) throw new AppError('Você não tem acesso a esta conta.', {
+      code: 'PROVIDER_ACCOUNT_FORBIDDEN', statusCode: 403,
+    });
     state.activeProfileId = profileId;
-    const profile = state.profiles.find((candidate) => candidate.id === profileId);
-    if (profile) {
-      profile.coolingUntil = null;
-    } else {
+    state.activeOwnerUserId = selected.ownerUserId;
+    const ownedProfile = state.profiles.find((candidate) => candidate.id === profileId);
+    if (ownedProfile) {
+      ownedProfile.coolingUntil = null;
+    } else if (profileId === DEFAULT_PROFILE_ID) {
       state.defaultCoolingUntil = null;
     }
     await this.writeState(provider, userId, state);
@@ -371,11 +401,46 @@ class ProviderAccountsService {
       state.activeProfileId = await this.canUseGlobalAccount(userId)
         ? DEFAULT_PROFILE_ID
         : state.profiles[0]?.id ?? DEFAULT_PROFILE_ID;
+      state.activeOwnerUserId = state.activeProfileId === DEFAULT_PROFILE_ID
+        ? null
+        : readNumericUserId(userId);
     }
     await this.writeState(provider, userId, state);
 
+    const ownerUserId = readNumericUserId(userId);
+    if (ownerUserId !== null) {
+      providerAccountAccessDb.deleteProfileGrants(ownerUserId, provider, profileId);
+    }
+
     const profilePath = this.getProfilePath(provider, userId, profileId);
     await rm(profilePath, { recursive: true, force: true });
+    return this.listAccounts(provider, userId);
+  }
+
+  async updateAccountAccess(
+    provider: ProviderAccountProvider,
+    userId: string | number | null | undefined,
+    profileId: string,
+    granteeUserIds: number[],
+  ): Promise<ProviderAccountsSnapshot> {
+    const ownerUserId = readNumericUserId(userId);
+    if (ownerUserId === null) throw new AppError('Usuário autenticado é obrigatório.', {
+      code: 'AUTHENTICATION_REQUIRED', statusCode: 401,
+    });
+    const state = await this.readState(provider, userId);
+    this.requireStoredProfile(state, profileId);
+    const validUsers = new Set(
+      userDb.listUsers()
+        .filter((user) => user.is_active === 1 && user.id !== ownerUserId)
+        .map((user) => user.id),
+    );
+    const uniqueIds = [...new Set(granteeUserIds)];
+    if (uniqueIds.some((id) => !validUsers.has(id))) {
+      throw new AppError('A lista contém um usuário inválido ou inativo.', {
+        code: 'INVALID_ACCOUNT_GRANTEE', statusCode: 400,
+      });
+    }
+    providerAccountAccessDb.replaceGrants(ownerUserId, provider, profileId, uniqueIds);
     return this.listAccounts(provider, userId);
   }
 
@@ -385,18 +450,21 @@ class ProviderAccountsService {
     options: RuntimeContextOptions = {},
   ): Promise<RuntimeContext> {
     const state = await this.readState(provider, userId);
-    const allowGlobalAccount = await this.canUseGlobalAccount(userId);
-    if (state.activeProfileId === DEFAULT_PROFILE_ID && !allowGlobalAccount) {
-      const ownedProfile = state.profiles[0];
-      if (ownedProfile) {
-        state.activeProfileId = ownedProfile.id;
+    const accessible = await this.listAccessibleProfiles(provider, userId, state);
+    const expectedOwner = state.activeOwnerUserId
+      ?? (state.activeProfileId === DEFAULT_PROFILE_ID ? null : readNumericUserId(userId));
+    let selected = accessible.find((profile) => (
+      profile.id === state.activeProfileId && profile.ownerUserId === expectedOwner
+    ));
+    if (!selected) {
+      selected = accessible[0];
+      if (selected) {
+        state.activeProfileId = selected.id;
+        state.activeOwnerUserId = selected.ownerUserId;
         await this.writeState(provider, userId, state);
-        return {
-          env: this.getProfileEnv(provider, userId, ownedProfile.id),
-          profileId: ownedProfile.id,
-        };
       }
-
+    }
+    if (!selected) {
       if (options.requireAccount === false) {
         return {
           env: this.getUnconfiguredProfileEnv(provider, userId),
@@ -413,8 +481,8 @@ class ProviderAccountsService {
       );
     }
     return {
-      env: this.getProfileEnv(provider, userId, state.activeProfileId),
-      profileId: state.activeProfileId,
+      env: this.getProfileEnv(provider, selected.ownerUserId, selected.id),
+      profileId: selected.id,
     };
   }
 
@@ -440,16 +508,7 @@ class ProviderAccountsService {
       state.defaultCoolingUntil = inferCooldownUntil(error);
     }
 
-    const allowGlobalAccount = await this.canUseGlobalAccount(userId);
-    const candidates: StoredProfile[] = [
-      ...(allowGlobalAccount ? [{
-        id: DEFAULT_PROFILE_ID,
-        name: 'Conta principal',
-        createdAt: '',
-        coolingUntil: state.defaultCoolingUntil ?? null,
-      }] : []),
-      ...state.profiles,
-    ];
+    const candidates = await this.listAccessibleProfiles(provider, userId, state);
     const activeIndex = candidates.findIndex((profile) => profile.id === exhaustedProfileId);
     const ordered = [
       ...candidates.slice(activeIndex + 1),
@@ -463,13 +522,14 @@ class ProviderAccountsService {
       }
       const status = await this.authStatusResolver(
         provider,
-        this.getProfileEnv(provider, userId, candidate.id),
+        this.getProfileEnv(provider, candidate.ownerUserId, candidate.id),
       );
       if (!status.authenticated) {
         continue;
       }
 
       state.activeProfileId = candidate.id;
+      state.activeOwnerUserId = candidate.ownerUserId;
       await this.writeState(provider, userId, state);
       return {
         fromProfileId: exhaustedProfileId,
@@ -480,6 +540,65 @@ class ProviderAccountsService {
 
     await this.writeState(provider, userId, state);
     return null;
+  }
+
+  private async listAccessibleProfiles(
+    provider: ProviderAccountProvider,
+    userId: string | number | null | undefined,
+    state: StoredState,
+  ): Promise<AccessibleProfile[]> {
+    const currentUserId = readNumericUserId(userId);
+    const currentUsername = currentUserId === null
+      ? null
+      : userDb.getUserById(currentUserId)?.username ?? null;
+    const profiles: AccessibleProfile[] = [];
+
+    if (await this.canUseGlobalAccount(userId)) {
+      profiles.push({
+        id: DEFAULT_PROFILE_ID,
+        name: 'Conta principal',
+        createdAt: '',
+        coolingUntil: state.defaultCoolingUntil ?? null,
+        ownerUserId: null,
+        ownerUsername: 'Sistema',
+        isDefault: true,
+        isOwner: false,
+        grantedUserIds: [],
+      });
+    }
+
+    for (const profile of state.profiles) {
+      profiles.push({
+        ...profile,
+        ownerUserId: currentUserId,
+        ownerUsername: currentUsername,
+        isDefault: false,
+        isOwner: true,
+        grantedUserIds: currentUserId === null
+          ? []
+          : providerAccountAccessDb.listGranteeIds(currentUserId, provider, profile.id),
+      });
+    }
+
+    if (currentUserId !== null) {
+      for (const grant of providerAccountAccessDb.listGrantedToUser(provider, currentUserId)) {
+        const owner = userDb.getUserById(grant.owner_user_id);
+        if (!owner) continue;
+        const ownerState = await this.readState(provider, grant.owner_user_id);
+        const sharedProfile = ownerState.profiles.find((profile) => profile.id === grant.profile_id);
+        if (!sharedProfile) continue;
+        profiles.push({
+          ...sharedProfile,
+          ownerUserId: grant.owner_user_id,
+          ownerUsername: owner.username,
+          isDefault: false,
+          isOwner: false,
+          grantedUserIds: [],
+        });
+      }
+    }
+
+    return profiles;
   }
 
   private getUserKey(userId: string | number | null | undefined): string {
@@ -577,12 +696,15 @@ class ProviderAccountsService {
         ))
         : [];
       const activeProfileId = parsed.activeProfileId === DEFAULT_PROFILE_ID
-        || profiles.some((profile) => profile.id === parsed.activeProfileId)
+        || (typeof parsed.activeProfileId === 'string' && PROFILE_ID_PATTERN.test(parsed.activeProfileId))
         ? parsed.activeProfileId as string
         : DEFAULT_PROFILE_ID;
       return {
         version: 1,
         activeProfileId,
+        activeOwnerUserId: typeof parsed.activeOwnerUserId === 'number'
+          ? parsed.activeOwnerUserId
+          : activeProfileId === DEFAULT_PROFILE_ID ? null : readNumericUserId(userId),
         autoSwitch: parsed.autoSwitch !== false,
         defaultCoolingUntil: typeof parsed.defaultCoolingUntil === 'string'
           ? parsed.defaultCoolingUntil

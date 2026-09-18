@@ -81,11 +81,17 @@ export default function ProviderUsageBar({ provider }: { provider: LLMProvider }
       if (Date.now() - lastLoadAtRef.current < MIN_REFRESH_GAP_MS) return;
       void load();
     };
+    const refreshAccount = (event: Event) => {
+      const changedProvider = (event as CustomEvent<{ provider?: string }>).detail?.provider;
+      if (changedProvider === provider) void load();
+    };
     document.addEventListener('visibilitychange', refreshVisible);
+    window.addEventListener('provider-auth-changed', refreshAccount);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', refreshVisible);
+      window.removeEventListener('provider-auth-changed', refreshAccount);
     };
   }, [provider]);
 

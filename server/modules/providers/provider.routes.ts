@@ -634,6 +634,29 @@ router.patch(
   }),
 );
 
+router.put(
+  '/:provider/accounts/:accountId/access',
+  asyncHandler(async (req: Request, res: Response) => {
+    const provider = parseAccountProvider(req.params.provider);
+    const accountId = parseAccountId(req.params.accountId);
+    const rawUserIds = req.body && typeof req.body === 'object'
+      ? (req.body as Record<string, unknown>).userIds
+      : undefined;
+    if (!Array.isArray(rawUserIds) || rawUserIds.some((id) => !Number.isInteger(id) || Number(id) <= 0)) {
+      throw new AppError('userIds must be an array of positive integer user IDs.', {
+        code: 'INVALID_ACCOUNT_GRANTEES', statusCode: 400,
+      });
+    }
+    const snapshot = await providerAccountsService.updateAccountAccess(
+      provider,
+      readRequestUserId(req),
+      accountId,
+      rawUserIds.map(Number),
+    );
+    res.json(createApiSuccessResponse(snapshot));
+  }),
+);
+
 router.delete(
   '/:provider/accounts/:accountId',
   asyncHandler(async (req: Request, res: Response) => {
