@@ -16,6 +16,7 @@ import NotificationsSettingsTab from '@/modules/settings/tabs/NotificationsSetti
 import TasksSettingsTab from '@/modules/settings/tabs/tasks-settings/TasksSettingsTab';
 import { PluginSettingsTab } from '@/modules/plugins';
 import AboutTab from '@/modules/settings/tabs/AboutTab';
+import AccountSettingsTab from '@/modules/settings/tabs/AccountSettingsTab';
 import UsersAdminTab from '@/modules/settings/tabs/UsersAdminTab';
 import ActivityAdminTab from '@/modules/settings/tabs/ActivityAdminTab';
 import { useSettingsController } from '@/modules/settings/hooks/useSettingsController';
@@ -232,6 +233,8 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
               {activeTab === 'plugins' && <PluginSettingsTab />}
 
               {activeTab === 'about' && <AboutTab />}
+
+              {activeTab === 'account' && <AccountSettingsTab />}
 
               {activeTab === 'users' && isAdmin && <UsersAdminTab />}
 

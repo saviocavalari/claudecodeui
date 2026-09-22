@@ -91,6 +91,28 @@ export const userDb = {
       .get(username) as UserRow | undefined;
   },
 
+  /**
+   * Looks up an active user by ID, including the password hash.
+   *
+   * Used by the "change my own password" flow: the ID comes from the verified
+   * token, so it is a safer lookup key than the username typed into a form.
+   */
+  getUserWithPasswordById(userId: number): UserRow | undefined {
+    const db = getConnection();
+    return db
+      .prepare('SELECT * FROM users WHERE id = ? AND is_active = 1')
+      .get(userId) as UserRow | undefined;
+  },
+
+  /** Replaces a user's password hash. */
+  updatePassword(userId: number, passwordHash: string): void {
+    const db = getConnection();
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
+      passwordHash,
+      userId
+    );
+  },
+
   /** Updates the last_login timestamp. Non-fatal — logs but does not throw. */
   updateLastLogin(userId: number): void {
     try {

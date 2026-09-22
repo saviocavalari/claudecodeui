@@ -24,6 +24,8 @@ type AuthDependencies = {
     hasUsers(): boolean;
     createUser(username: string, passwordHash: string, role: UserRole): AuthUser;
     getUserByUsername(username: string): AuthLoginUser | undefined;
+    getUserWithPasswordById(userId: number): AuthLoginUser | undefined;
+    updatePassword(userId: number, passwordHash: string): void;
     updateLastLogin(userId: number): void;
   };
   transaction: {
@@ -161,6 +163,76 @@ export function createAuthService(dependencies: AuthDependencies) {
         },
         token: dependencies.generateToken({ ...user, role: toUserRole(user.role) }),
       };
+    },
+
+    /**
+     * Changes the password of the caller's own account, and only that one.
+     *
+     * The account is resolved from the authenticated token's user id — never
+     * from the request body — so a user cannot aim this at somebody else. The
+     * current password is required as a second factor: it stops anyone who
+     * finds an unlocked browser from silently locking the real owner out.
+     */
+    async changePassword(
+      authenticatedUser: unknown,
+      currentPasswordInput: unknown,
+      newPasswordInput: unknown,
+    ) {
+      if (
+        typeof authenticatedUser !== 'object'
+        || authenticatedUser === null
+        || !('id' in authenticatedUser)
+        || (typeof authenticatedUser.id !== 'number' && typeof authenticatedUser.id !== 'bigint')
+      ) {
+        throw new AppError('Authenticated user is required', {
+          code: 'AUTH_USER_REQUIRED',
+          statusCode: 401,
+        });
+      }
+
+      const currentPassword = typeof currentPasswordInput === 'string' ? currentPasswordInput : '';
+      const newPassword = typeof newPasswordInput === 'string' ? newPasswordInput : '';
+
+      if (!currentPassword || !newPassword) {
+        throw new AppError('Current and new passwords are required', {
+          code: 'AUTH_CREDENTIALS_REQUIRED',
+          statusCode: 400,
+        });
+      }
+      if (newPassword.length < 6) {
+        throw new AppError('New password must be at least 6 characters', {
+          code: 'AUTH_CREDENTIALS_TOO_SHORT',
+          statusCode: 400,
+        });
+      }
+      if (newPassword === currentPassword) {
+        throw new AppError('New password must be different from the current one', {
+          code: 'AUTH_PASSWORD_UNCHANGED',
+          statusCode: 400,
+        });
+      }
+
+      const userId = numericUserId(authenticatedUser.id);
+      const user = dependencies.users.getUserWithPasswordById(userId);
+      const validPassword = user
+        ? await dependencies.comparePassword(currentPassword, user.password_hash)
+        : false;
+      if (!user || !validPassword) {
+        throw new AppError('Current password is incorrect', {
+          code: 'AUTH_INVALID_CREDENTIALS',
+          statusCode: 401,
+        });
+      }
+
+      dependencies.users.updatePassword(userId, await dependencies.hashPassword(newPassword));
+      dependencies.recordActivity?.({
+        userId,
+        username: user.username,
+        action: 'password.change',
+        detail: 'senha alterada pelo próprio usuário',
+      });
+
+      return { success: true };
     },
 
     getCurrentUser(user: unknown) {

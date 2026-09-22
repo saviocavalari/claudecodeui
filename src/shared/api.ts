@@ -172,6 +172,9 @@ export const api = {
     }),
     refresh: () => post('/api/auth/refresh'),
     user: () => get('/api/auth/user'),
+    // Changes the logged-in user's own password (requires the token).
+    changePassword: (currentPassword: string, newPassword: string) =>
+      post('/api/auth/change-password', { currentPassword, newPassword }),
   },
 
   // Admin-only user, access and service-management endpoints.

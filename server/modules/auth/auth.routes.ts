@@ -41,6 +41,21 @@ export function createAuthRouter(
     }
   });
 
+  // Self-service password change. The account is taken from the token, so this
+  // route can only ever change the caller's own password.
+  router.post('/change-password', authenticateToken, async (req, res, next) => {
+    try {
+      const body = req.body as { currentPassword?: unknown; newPassword?: unknown };
+      res.json(await service.changePassword(
+        (req as AuthenticatedRequest).user,
+        body.currentPassword,
+        body.newPassword,
+      ));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.get('/user', authenticateToken, (req, res) => {
     res.json(service.getCurrentUser((req as AuthenticatedRequest).user));
   });

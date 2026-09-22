@@ -13,6 +13,8 @@ function createDependencies(overrides: Partial<AuthDependencies> = {}): AuthDepe
       hasUsers: () => false,
       createUser: (username, passwordHash) => ({ id: 1, username, password_hash: passwordHash }),
       getUserByUsername: () => undefined,
+      getUserWithPasswordById: () => undefined,
+      updatePassword: () => undefined,
       updateLastLogin: () => undefined,
     },
     transaction: {
@@ -46,6 +48,8 @@ test('register hashes credentials and commits through injected dependencies', as
         return { id: 1, username, password_hash: passwordHash };
       },
       getUserByUsername: () => undefined,
+      getUserWithPasswordById: () => undefined,
+      updatePassword: () => undefined,
       updateLastLogin: (userId) => operations.push(`login:${userId}`),
     },
   }));
@@ -63,6 +67,8 @@ test('login rejects an invalid password without issuing a token', async () => {
       hasUsers: () => true,
       createUser: () => { throw new Error('unused'); },
       getUserByUsername: () => ({ id: 1, username: 'alice', password_hash: 'hash' }),
+      getUserWithPasswordById: () => undefined,
+      updatePassword: () => undefined,
       updateLastLogin: () => undefined,
     },
     comparePassword: async () => false,
@@ -92,4 +98,69 @@ test('refreshSession issues a replacement token for the authenticated user', () 
 
   assert.deepEqual(result, { token: 'replacement-token' });
   assert.deepEqual(tokenUser, { id: 7, username: 'alice' });
+});
+
+test('changePassword rewrites the hash of the account taken from the token', async () => {
+  const writes: Array<{ userId: number; passwordHash: string }> = [];
+  let lookedUpId: number | undefined;
+  const service = createAuthService(createDependencies({
+    users: {
+      hasUsers: () => true,
+      createUser: () => { throw new Error('unused'); },
+      getUserByUsername: () => { throw new Error('must not resolve the account by username'); },
+      getUserWithPasswordById: (userId) => {
+        lookedUpId = userId;
+        return { id: userId, username: 'alice', password_hash: 'old-hash' };
+      },
+      updatePassword: (userId, passwordHash) => writes.push({ userId, passwordHash }),
+      updateLastLogin: () => undefined,
+    },
+    comparePassword: async () => true,
+    hashPassword: async () => 'new-hash',
+  }));
+
+  const result = await service.changePassword({ id: 7, username: 'alice' }, 'old-secret', 'new-secret');
+
+  assert.deepEqual(result, { success: true });
+  assert.equal(lookedUpId, 7);
+  assert.deepEqual(writes, [{ userId: 7, passwordHash: 'new-hash' }]);
+});
+
+test('changePassword rejects a wrong current password without touching the hash', async () => {
+  let wrote = false;
+  const service = createAuthService(createDependencies({
+    users: {
+      hasUsers: () => true,
+      createUser: () => { throw new Error('unused'); },
+      getUserByUsername: () => undefined,
+      getUserWithPasswordById: (userId) => ({ id: userId, username: 'alice', password_hash: 'old-hash' }),
+      updatePassword: () => { wrote = true; },
+      updateLastLogin: () => undefined,
+    },
+    comparePassword: async () => false,
+  }));
+
+  await assert.rejects(
+    service.changePassword({ id: 7, username: 'alice' }, 'wrong-secret', 'new-secret'),
+    (error: unknown) => error instanceof AppError && error.code === 'AUTH_INVALID_CREDENTIALS',
+  );
+  assert.equal(wrote, false);
+});
+
+test('changePassword rejects an unauthenticated caller', async () => {
+  const service = createAuthService(createDependencies());
+
+  await assert.rejects(
+    service.changePassword(undefined, 'old-secret', 'new-secret'),
+    (error: unknown) => error instanceof AppError && error.code === 'AUTH_USER_REQUIRED',
+  );
+});
+
+test('changePassword rejects a new password shorter than six characters', async () => {
+  const service = createAuthService(createDependencies());
+
+  await assert.rejects(
+    service.changePassword({ id: 7, username: 'alice' }, 'old-secret', 'short'),
+    (error: unknown) => error instanceof AppError && error.code === 'AUTH_CREDENTIALS_TOO_SHORT',
+  );
 });
