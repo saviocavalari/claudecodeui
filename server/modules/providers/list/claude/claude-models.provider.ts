@@ -42,20 +42,6 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
           { value: 'low' },
           { value: 'medium' },
           { value: 'high' },
-          { value: 'max' },
-        ],
-      },
-    },
-    {
-      value: 'best',
-      label: 'Best available',
-      description: 'Use Fable 5 when available, otherwise the latest Opus model.',
-      effort: {
-        default: 'high',
-        values: [
-          { value: 'low' },
-          { value: 'medium' },
-          { value: 'high' },
           { value: 'xhigh' },
           { value: 'max' },
           ULTRACODE_EFFORT_OPTION,
@@ -63,9 +49,9 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
       },
     },
     {
-      value: 'fable',
-      label: 'Fable 5',
-      description: 'Most capable Claude model for the hardest, longest-running tasks.',
+      value: 'opus',
+      label: 'Opus',
+      description: 'Latest Opus model for complex work and everyday tasks.',
       effort: {
         default: 'high',
         values: [
@@ -81,55 +67,7 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
     {
       value: 'sonnet',
       label: 'Sonnet',
-      description: 'Latest Sonnet model for everyday coding tasks.',
-      effort: {
-        default: 'high',
-        values: [
-          { value: 'low' },
-          { value: 'medium' },
-          { value: 'high' },
-          { value: 'xhigh' },
-          { value: 'max' },
-          ULTRACODE_EFFORT_OPTION,
-        ],
-      },
-    },
-    {
-      value: 'sonnet[1m]',
-      label: 'Sonnet (1M context)',
-      description: 'Latest Sonnet model with a 1M context window.',
-      effort: {
-        default: 'high',
-        values: [
-          { value: 'low' },
-          { value: 'medium' },
-          { value: 'high' },
-          { value: 'xhigh' },
-          { value: 'max' },
-          ULTRACODE_EFFORT_OPTION,
-        ],
-      },
-    },
-    {
-      value: 'opus',
-      label: 'Opus',
-      description: 'Latest Opus model for complex reasoning and coding tasks.',
-      effort: {
-        default: 'high',
-        values: [
-          { value: 'low' },
-          { value: 'medium' },
-          { value: 'high' },
-          { value: 'xhigh' },
-          { value: 'max' },
-          ULTRACODE_EFFORT_OPTION,
-        ],
-      },
-    },
-    {
-      value: 'opus[1m]',
-      label: 'Opus (1M context)',
-      description: 'Latest Opus model with a 1M context window.',
+      description: 'Latest Sonnet model, most efficient for simpler tasks.',
       effort: {
         default: 'high',
         values: [
@@ -146,11 +84,164 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
       value: 'haiku',
       label: 'Haiku',
       description: 'Fast and efficient Claude model for simple tasks.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'max' },
+        ],
+      },
+    },
+    {
+      value: 'best',
+      label: 'Best available',
+      description: 'Use the most capable model available, otherwise the latest Opus.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
     },
     {
       value: 'opusplan',
       label: 'Opus Plan',
       description: 'Use Opus while planning, then switch to Sonnet for execution.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-fable-5-1',
+      label: 'Fable 5.1',
+      description: 'For your toughest challenges.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-fable-5',
+      label: 'Fable 5',
+      description: 'Previous Fable generation.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-opus-5',
+      label: 'Opus 5',
+      description: 'Previous Opus generation.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-sonnet-5',
+      label: 'Sonnet 5',
+      description: 'Previous Sonnet generation.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-opus-4-8',
+      label: 'Opus 4.8',
+      description: 'Opus 4.8, pinned.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-opus-4-7',
+      label: 'Opus 4.7',
+      description: 'Opus 4.7, pinned.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-opus-4-6',
+      label: 'Opus 4.6',
+      description: 'Opus 4.6, pinned.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
+      value: 'claude-sonnet-4-6',
+      label: 'Sonnet 4.6',
+      description: 'Sonnet 4.6, pinned.',
       effort: {
         default: 'high',
         values: [
