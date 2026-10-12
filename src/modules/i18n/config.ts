@@ -24,6 +24,15 @@ import enTasks from '@/modules/i18n/locales/en/tasks.json';
 // oxlint-disable-next-line importx/order
 import enGit from '@/modules/i18n/locales/en/git.json';
 
+import ptBRCommon from '@/modules/i18n/locales/pt-BR/common.json';
+import ptBRSettings from '@/modules/i18n/locales/pt-BR/settings.json';
+import ptBRAuth from '@/modules/i18n/locales/pt-BR/auth.json';
+import ptBRSidebar from '@/modules/i18n/locales/pt-BR/sidebar.json';
+import ptBRChat from '@/modules/i18n/locales/pt-BR/chat.json';
+import ptBRCodeEditor from '@/modules/i18n/locales/pt-BR/codeEditor.json';
+// oxlint-disable-next-line importx/order
+import ptBRTasks from '@/modules/i18n/locales/pt-BR/tasks.json';
+
 import frCommon from '@/modules/i18n/locales/fr/common.json';
 import frSettings from '@/modules/i18n/locales/fr/settings.json';
 import frAuth from '@/modules/i18n/locales/fr/auth.json';
@@ -127,7 +136,9 @@ const getSavedLanguage = (): string => {
   if (saved && languages.some(lang => lang.value === saved)) {
     return saved;
   }
-  return 'en';
+  // This install serves a Portuguese-speaking team, so pt-BR is what shows
+  // before a choice exists (the login screen on a new device included).
+  return 'pt-BR';
 };
 
 // Initialize i18next
@@ -145,6 +156,15 @@ i18n
         codeEditor: enCodeEditor,
         tasks: enTasks,
 git: enGit,
+      },
+      'pt-BR': {
+        common: ptBRCommon,
+        settings: ptBRSettings,
+        auth: ptBRAuth,
+        sidebar: ptBRSidebar,
+        chat: ptBRChat,
+        codeEditor: ptBRCodeEditor,
+        tasks: ptBRTasks,
       },
       fr: {
         common: frCommon,
