@@ -52,3 +52,12 @@ test('pt-BR translations keep the placeholders of the English text', () => {
     }
   }
 });
+
+test('pt-BR translates every Browser string', () => {
+  const english = bundle('en', 'settings');
+  const portuguese = bundle('pt-BR', 'settings');
+  const browserKeys = [...english.keys()].filter((key) => /^browserUse(Settings)?\./.test(key));
+
+  assert.ok(browserKeys.length > 0);
+  assert.deepEqual(browserKeys.filter((key) => !portuguese.has(key)), []);
+});

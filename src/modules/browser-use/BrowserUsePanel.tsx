@@ -19,6 +19,7 @@ import { cn } from '@/shared/utils';
 import { Badge, Button } from '@/shared/ui';
 import { api, readApiJson, ApiRequestError } from '@/shared/api';
 import type { SettingsMainTab } from '@/shared/types';
+import { localizeAction, localizeServerMessage } from '@/modules/browser-use/browserUseServerText';
 
 type BrowserUseStatus = {
   enabled: boolean;
@@ -104,7 +105,7 @@ function getDomain(url: string | null, t: TranslateFn): string {
 
 function formatAction(action: string | null, t: TranslateFn): string {
   if (!action) return t('browserUse.waitingAction');
-  return action.replace(/_/g, ' ').replace(/:/g, ': ');
+  return localizeAction(action, t);
 }
 
 function getStatusTone(status: BrowserUseSession['status']): string {
@@ -297,7 +298,7 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
         {needsBrowserBinaries && (
           <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">
             <div className="text-sm font-medium text-foreground">{t('browserUse.runtimeSetupTitle')}</div>
-            <p className="mt-1 text-sm text-muted-foreground">{status?.message}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{localizeServerMessage(status?.message, t)}</p>
             <Button
               type="button"
               size="sm"
@@ -351,7 +352,7 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
       ) : (
         <div className="px-6 text-center">
           <MonitorPlay className="mx-auto h-9 w-9 text-neutral-500" />
-          <div className="mt-3 text-sm font-medium text-neutral-100">{selectedSession?.message || t('browserUse.waitingScreenshot')}</div>
+          <div className="mt-3 text-sm font-medium text-neutral-100">{localizeServerMessage(selectedSession?.message, t) || t('browserUse.waitingScreenshot')}</div>
           <p className="mt-1 text-xs text-neutral-400">{t('browserUse.waitingScreenshotHint')}</p>
         </div>
       )}
