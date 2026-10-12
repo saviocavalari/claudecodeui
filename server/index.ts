@@ -386,6 +386,11 @@ async function startServer() {
             startEnabledPluginServers().catch(err => {
                 console.error('[Plugins] Error during startup:', err.message);
             });
+
+            // Keep the agents' Browser MCP entry pointing at this install
+            browserUseService.syncAgentMcpRegistration().catch(err => {
+                console.error('[Browser] Error syncing MCP registration:', getErrorMessage(err));
+            });
         });
 
         await closeSessionsWatcher();

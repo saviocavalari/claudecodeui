@@ -161,9 +161,20 @@ function getMcpCommand(): { command: string; args: string[] } {
   };
 }
 
-function getMcpApiUrl(): string {
-  const port = process.env.SERVER_PORT || process.env.PORT || '3001';
-  return `http://127.0.0.1:${port}/api/browser-use-mcp`;
+/**
+ * Builds the URL the MCP bridge uses to reach this server. The bridge runs on
+ * the same machine, so loopback works unless HOST pins the server to a single
+ * interface, in which case loopback is refused and that address must be used.
+ */
+export function buildMcpApiUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const port = env.SERVER_PORT || env.PORT || '3001';
+  const boundHost = (env.HOST || '').trim();
+  const isAnyOrLoopback = !boundHost
+    || ['0.0.0.0', '::', 'localhost', '127.0.0.1', '::1', '[::1]'].includes(boundHost);
+  const host = isAnyOrLoopback
+    ? '127.0.0.1'
+    : boundHost.includes(':') && !boundHost.startsWith('[') ? `[${boundHost}]` : boundHost;
+  return `http://${host}:${port}/api/browser-use-mcp`;
 }
 
 async function removeMcpServerFromAllProviders(name: string) {
@@ -301,8 +312,13 @@ async function installRuntime(): Promise<{ success: boolean; message: string }> 
   runtimeProbeCache = null;
   installPromise = (async () => {
     try {
-      lastInstallMessage = 'Installing Playwright package...';
-      await runCommand(npmCommand, ['install', '--no-save', '--no-package-lock', 'playwright']);
+      // Playwright ships as an optional dependency, so it is normally already
+      // here. The fallback keeps the lockfile and devDependencies in place:
+      // ignoring the lockfile re-resolves every package of the running app.
+      if (!getPlaywright()) {
+        lastInstallMessage = 'Installing Playwright package...';
+        await runCommand(npmCommand, ['install', '--no-save', '--include=dev', 'playwright']);
+      }
 
       if (process.platform === 'linux') {
         lastInstallMessage = 'Installing Chromium system dependencies...';
@@ -316,6 +332,9 @@ async function installRuntime(): Promise<{ success: boolean; message: string }> 
       return { success: true, message: lastInstallMessage };
     } catch (error) {
       lastInstallMessage = formatInstallError(error);
+      // Nothing else records this: without the log line, a failed install
+      // leaves no trace to diagnose once the request is gone.
+      console.error('[Browser] Runtime install failed:', lastInstallMessage);
       return { success: false, message: lastInstallMessage };
     }
   })();
@@ -466,10 +485,22 @@ export const browserUseService = {
       args,
       env: {
         CLOUDCLI_BROWSER_USE_MCP_TOKEN: getOrCreateMcpToken(),
-        CLOUDCLI_BROWSER_USE_API_URL: getMcpApiUrl(),
+        CLOUDCLI_BROWSER_USE_API_URL: buildMcpApiUrl(),
       },
     });
     return { name: MCP_SERVER_NAME, command, args, results };
+  },
+
+  /**
+   * Re-applies the MCP registration when Browser is enabled. The entry stores
+   * an absolute script path and the API URL, and both go stale when an update
+   * moves the script or the server changes host/port.
+   */
+  async syncAgentMcpRegistration() {
+    if (!readSettings().enabled) {
+      return null;
+    }
+    return this.registerAgentMcp();
   },
 
   getMcpToken() {
