@@ -148,6 +148,20 @@ app.get('/health', (req, res) => {
     });
 });
 
+// API responses must never be cached. They carry per-request auth state
+// (X-Refreshed-Token): when the browser revalidates a cached copy and gets a
+// 304, it hands the page the token stored with that old copy. The client then
+// swaps to a stale token, which re-runs the auth check, reconnects the
+// websocket and refetches projects/TaskMaster - and with several cached copies
+// holding different tokens it never settles (thousands of requests a minute,
+// the workspace stuck on its loading screen). No ETag means no 304; no-store
+// means no copy to revalidate.
+app.set('etag', false);
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+
 // Optional API key validation (if configured)
 app.use('/api', validateApiKey);
 
