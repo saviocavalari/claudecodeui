@@ -29,7 +29,7 @@ type AuthActionResult = { success: true } | { success: false; error: string };
 type AuthSessionPayload = {
   token?: string;
   user?: AuthUser;
-  error?: string;
+  error?: string | { code?: string; message?: string };
   message?: string;
 };
 
@@ -46,7 +46,7 @@ type OnboardingStatusPayload = {
 };
 
 type ApiErrorPayload = {
-  error?: string;
+  error?: string | { code?: string; message?: string };
   message?: string;
 };
 
@@ -80,7 +80,16 @@ function resolveApiErrorMessage(payload: ApiErrorPayload | null, fallback: strin
     return fallback;
   }
 
-  return payload.error ?? payload.message ?? fallback;
+  // The server answers with either a plain string or an AppError envelope
+  // ({ code, message }). Rendering the object as-is crashes React (error #31).
+  const { error } = payload;
+  if (typeof error === 'string' && error) {
+    return error;
+  }
+  if (error && typeof error === 'object' && typeof error.message === 'string' && error.message) {
+    return error.message;
+  }
+  return typeof payload.message === 'string' && payload.message ? payload.message : fallback;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
