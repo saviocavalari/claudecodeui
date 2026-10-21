@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -206,6 +206,47 @@ test('users with permission retain the global provider account', async () => {
       env: {},
       profileId: 'default',
     });
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test('a long-lived token feeds only the primary Claude account', async () => {
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'cloudcli-provider-accounts-token-'));
+  const globalClaudeTokenPath = path.join(tempRoot, 'global-claude-oauth-token');
+  const service = new ProviderAccountsService({
+    accountsRoot: path.join(tempRoot, 'accounts'),
+    providerHomes: {
+      claude: path.join(tempRoot, 'claude-home'),
+      codex: path.join(tempRoot, 'codex-home'),
+    },
+    authStatusResolver: async (provider) => ({
+      installed: true,
+      provider,
+      authenticated: true,
+      email: 'global@example.test',
+      method: 'credentials_file',
+    }),
+    globalAccountAccessResolver: () => true,
+    globalClaudeTokenPath,
+  });
+
+  try {
+    assert.deepEqual((await service.getRuntimeContext('claude', 8)).env, {});
+
+    await writeFile(globalClaudeTokenPath, 'not-a-token\n');
+    assert.deepEqual((await service.getRuntimeContext('claude', 8)).env, {});
+
+    await writeFile(globalClaudeTokenPath, 'sk-ant-oat01-abc_DEF-123\n');
+    assert.deepEqual((await service.getRuntimeContext('claude', 8)).env, {
+      CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat01-abc_DEF-123',
+    });
+    assert.deepEqual((await service.getRuntimeContext('codex', 8)).env, {});
+
+    const personal = await service.createAccount('claude', 8, 'Pessoal');
+    const runtime = await service.getRuntimeContext('claude', 8);
+    assert.equal(runtime.profileId, personal.account.id);
+    assert.equal(runtime.env.CLAUDE_CODE_OAUTH_TOKEN, undefined);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

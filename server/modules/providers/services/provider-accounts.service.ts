@@ -49,6 +49,7 @@ const DEFAULT_PROFILE_ID = 'default';
 const ACCOUNT_PROVIDERS = new Set<ProviderAccountProvider>(['claude', 'codex']);
 const PROFILE_ID_PATTERN = /^[a-f0-9-]{36}$/;
 const DEFAULT_COOLDOWN_MS = 60 * 60 * 1000;
+const LONG_LIVED_TOKEN_PATTERN = /^sk-ant-oat\d+-[A-Za-z0-9_-]+$/;
 
 const SHARED_CONFIG_ENTRIES: Record<ProviderAccountProvider, string[]> = {
   claude: [
@@ -142,6 +143,7 @@ const inferCooldownUntil = (error: unknown): string => {
 class ProviderAccountsService {
   private readonly accountsRoot: string;
   private readonly providerHomes: Record<ProviderAccountProvider, string>;
+  private readonly globalClaudeTokenPath: string;
   private readonly authStatusResolver: (
     provider: ProviderAccountProvider,
     env: Record<string, string>,
@@ -160,6 +162,7 @@ class ProviderAccountsService {
     globalAccountAccessResolver?: (
       userId: string | number | null | undefined,
     ) => boolean | Promise<boolean>;
+    globalClaudeTokenPath?: string;
   } = {}) {
     this.accountsRoot = options.accountsRoot
       ?? path.join(os.homedir(), '.cloudcli', 'provider-accounts');
@@ -167,6 +170,13 @@ class ProviderAccountsService {
       claude: options.providerHomes?.claude ?? path.join(os.homedir(), '.claude'),
       codex: options.providerHomes?.codex ?? path.join(os.homedir(), '.codex'),
     };
+    // The primary account logged in through `claude /login` dies for good when
+    // its refresh token reaches its hard expiry (about a month), and every
+    // user sharing it is asked to authenticate again. A token from
+    // `claude setup-token` lasts a year; when one is stored here it takes
+    // precedence over ~/.claude/.credentials.json for the primary account only.
+    this.globalClaudeTokenPath = options.globalClaudeTokenPath
+      ?? path.join(path.dirname(this.accountsRoot), 'global-claude-oauth-token');
     // The registry is imported lazily: it pulls in every provider runtime, and
     // those runtimes import this service back for their per-account credentials.
     // A top-level import would close that cycle and leave whichever module the
@@ -215,7 +225,7 @@ class ProviderAccountsService {
     }
 
     const accounts = await Promise.all(accessible.map(async (profile): Promise<ProviderAccount> => {
-      const env = this.getProfileEnv(provider, profile.ownerUserId, profile.id);
+      const env = await this.getProfileEnv(provider, profile.ownerUserId, profile.id);
       const status = await this.authStatusResolver(provider, env);
       return {
         id: profile.id,
@@ -481,7 +491,7 @@ class ProviderAccountsService {
       );
     }
     return {
-      env: this.getProfileEnv(provider, selected.ownerUserId, selected.id),
+      env: await this.getProfileEnv(provider, selected.ownerUserId, selected.id),
       profileId: selected.id,
     };
   }
@@ -522,7 +532,7 @@ class ProviderAccountsService {
       }
       const status = await this.authStatusResolver(
         provider,
-        this.getProfileEnv(provider, candidate.ownerUserId, candidate.id),
+        await this.getProfileEnv(provider, candidate.ownerUserId, candidate.id),
       );
       if (!status.authenticated) {
         continue;
@@ -636,19 +646,29 @@ class ProviderAccountsService {
     return path.join(this.getProviderRoot(provider, userId), 'profiles', profileId);
   }
 
-  private getProfileEnv(
+  private async getProfileEnv(
     provider: ProviderAccountProvider,
     userId: string | number | null | undefined,
     profileId: string,
-  ): Record<string, string> {
+  ): Promise<Record<string, string>> {
     if (profileId === DEFAULT_PROFILE_ID) {
-      return {};
+      const token = provider === 'claude' ? await this.readGlobalClaudeToken() : null;
+      return token ? { CLAUDE_CODE_OAUTH_TOKEN: token } : {};
     }
 
     const profilePath = this.getProfilePath(provider, userId, profileId);
     return provider === 'claude'
       ? { CLAUDE_CONFIG_DIR: profilePath }
       : { CODEX_HOME: profilePath };
+  }
+
+  private async readGlobalClaudeToken(): Promise<string | null> {
+    try {
+      const token = (await readFile(this.globalClaudeTokenPath, 'utf8')).trim();
+      return LONG_LIVED_TOKEN_PATTERN.test(token) ? token : null;
+    } catch {
+      return null;
+    }
   }
 
   private getUnconfiguredProfileEnv(

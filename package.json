@@ -48,6 +48,7 @@
     "postbuild:server": "node scripts/promote-dist-server.mjs",
     "preview": "vite preview",
     "reset-password": "node scripts/reset-password.mjs",
+    "set-global-claude-token": "node scripts/set-global-claude-token.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p server/tsconfig.json",
     "test": "tsx --tsconfig server/tsconfig.json --test \"server/**/*.test.ts\" \"server/**/*.test.js\"",
     "test:client": "vitest run",

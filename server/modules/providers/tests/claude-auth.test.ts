@@ -91,6 +91,21 @@ test('checkCredentials: CLAUDE_CODE_OAUTH_TOKEN set is authenticated via environ
   });
 });
 
+test('checkCredentials: CLAUDE_CODE_OAUTH_TOKEN passed in the account env is authenticated, even with emptied credentials', async () => {
+  await withTempHome(async (homeDir) => {
+    await writeCredentialsFile(homeDir, {
+      claudeAiOauth: { accessToken: '', refreshToken: '', expiresAt: 0 },
+    });
+
+    const auth = new ClaudeProviderAuth() as unknown as {
+      checkCredentials: (env: Record<string, string>) => Promise<CheckCredentialsResult>;
+    };
+    const status = await auth.checkCredentials({ CLAUDE_CODE_OAUTH_TOKEN: 'sk-ant-oat01-test' });
+    assert.equal(status.authenticated, true);
+    assert.equal(status.method, 'environment');
+  });
+});
+
 test('checkCredentials: CLAUDE_CODE_OAUTH_TOKEN configured via settings.json env block is authenticated via environment', async () => {
   await withTempHome(async (homeDir) => {
     await writeSettingsFile(homeDir, { CLAUDE_CODE_OAUTH_TOKEN: 'test-oauth-token-from-settings' });
