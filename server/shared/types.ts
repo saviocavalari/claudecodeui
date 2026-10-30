@@ -1391,3 +1391,18 @@ export type CliApplication = {
 export type SandboxCommandService = {
   execute(argumentsList: string[]): Promise<number>;
 };
+
+//----------------- MANUAL BROWSER INPUT ------------
+/** Validated input from the authenticated Browser panel. Text is transient and must never be logged. Coordinates use the remote viewport's CSS pixels; control leases pause agent actions. */
+export type BrowserManualAction =
+  | { action: 'control'; enabled: boolean }
+  | { action: 'snapshot' | 'back' | 'forward' | 'reload' }
+  | { action: 'navigate'; url: string }
+  | { action: 'text'; text: string }
+  | { action: 'key'; key: string }
+  | { action: 'pointer'; points: { x: number; y: number }[] }
+  | { action: 'scroll'; x: number; y: number; deltaX: number; deltaY: number }
+  | { action: 'tab'; index: number };
+
+/** Who is asking for a browser session; personal sessions only open to their owner or an admin. */
+export type BrowserSessionUser = { id: string; isAdmin: boolean };

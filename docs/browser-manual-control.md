@@ -1,0 +1,11 @@
+# Controle manual do navegador
+
+Na aba Browser/Navegador, use **Abrir navegador**, **Controlar** e o campo de endereço. Clique na página para escolher um campo e digite; o campo auxiliar de teclado também permite entrada por celular e composição de acentos. Colagem, Tab, Enter, Backspace, rolagem e arraste são encaminhados para a mesma sessão usada pelo agente. Abas abertas por login aparecem acima da imagem. A ampliação mantém o controle ativo.
+
+Use **Devolver ao agente** depois de entrar. O servidor rejeita ações do agente enquanto o usuário tem uma concessão de controle ativa. Essa concessão expira em 30 segundos sem renovação; enquanto o painel fica visível, uma captura periódica a renova. Fechar o painel libera o controle. Sessões abertas pela interface reutilizam um perfil persistente por usuário autenticado. Essas sessões pessoais guardam os logins da pessoa, então só o dono e os administradores as veem e controlam; as sessões abertas pelos agentes continuam compartilhadas. O conector dos agentes usa uma chave única e não sabe quem pede, portanto um agente de qualquer usuário ainda alcança qualquer sessão aberta e pode reabrir um perfil salvo pelo nome: não deixe login sensível salvo. Quando uma janela de login se fecha sozinha, a sessão continua na aba que ficou aberta.
+
+As novas rotas HTTP ficam atrás do middleware existente de autenticação. O parser aceita somente comandos limitados, URLs HTTP(S), coordenadas finitas e teclas permitidas. Entradas de texto são transitórias, não entram na conversa nem nos metadados de ação. Erros retornados ao frontend não incluem os argumentos do navegador. A fila por sessão mantém a ordem das entradas.
+
+A função permite que o usuário interaja com o CAPTCHA; não automatiza sua resolução e não garante que sites aceitem o navegador remoto.
+
+Validação: TypeScript; testes de parser; testes da interface (controle explícito, coordenadas, teclado, cancelamento após erro, marcador do agente e aviso sem captura); testes opcionais com Chromium real para entrada Unicode, cliques em iframe, arraste, rolagem, devolução ao agente, janela de login que se fecha e sessão pessoal. Rodar o teste real com `TEST_BROWSER_RUNTIME=1 node_modules/.bin/tsx --tsconfig server/tsconfig.json --test server/modules/browser-use/tests/browser-manual-runtime.test.ts`.

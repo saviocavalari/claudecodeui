@@ -9,8 +9,10 @@ import spawn from 'cross-spawn';
 
 import { appConfigDb } from '@/modules/database/index.js';
 import { providerMcpService } from '@/modules/providers/index.js';
+import type { BrowserManualAction, BrowserSessionUser } from '@/shared/types.js';
 import { getModuleDirectory } from '@/shared/utils.js';
 
+import { canUseBrowserSession, personalProfileName } from './browser-manual-input.js';
 import { getBrowserUseRuntime } from './browser-use-runtime.js';
 
 const require = createRequire(import.meta.url);
@@ -44,7 +46,7 @@ type BrowserUseSession = {
   cursor: {
     x: number;
     y: number;
-    actor: 'agent';
+    actor: 'agent' | 'user';
   } | null;
 };
 
@@ -73,6 +75,9 @@ type RuntimeProbe = Omit<RuntimeReadiness, 'installInProgress' | 'installMessage
 
 const sessions = new Map<string, BrowserUseSession>();
 const handles = new Map<string, RuntimeHandle>();
+const manualLeases = new Map<string, { controller: string; expires: number }>();
+const manualQueues = new Map<string, Promise<unknown>>();
+const MANUAL_LEASE_MS = 30_000;
 let installPromise: Promise<{ success: boolean; message: string }> | null = null;
 let lastInstallMessage: string | null = null;
 let runtimeProbeCache: { value: RuntimeProbe; updatedAt: number } | null = null;
@@ -373,9 +378,16 @@ function ownerSessions(ownerId: string): BrowserUseSession[] {
   return [...sessions.values()].filter((session) => session.ownerId === ownerId);
 }
 
+/** A login popup closes itself when it is done, so the session moves on to a tab still open. */
+function openPage(handle: RuntimeHandle): any {
+  if (handle.page?.isClosed()) handle.page = handle.context?.pages().at(-1) ?? handle.page;
+  return handle.page;
+}
+
 async function closeHandle(sessionId: string): Promise<void> {
   const handle = handles.get(sessionId);
   handles.delete(sessionId);
+  manualLeases.delete(sessionId);
   await handle?.context?.close?.().catch(() => undefined);
   await handle?.browser?.close().catch(() => undefined);
 }
@@ -434,6 +446,7 @@ async function getActionPoint(page: any, input: { selector?: string; text?: stri
   };
 }
 
+/** Used by Browser HTTP routes and the MCP bridge to manage the shared browser runtime. */
 export const browserUseService = {
   async getSettings() {
     return readSettings();
@@ -522,10 +535,10 @@ export const browserUseService = {
     };
   },
 
-  async listSessions() {
+  async listSessions(user: BrowserSessionUser) {
     await expireStaleSessions();
     return [...sessions.values()]
-      .filter((session) => session.ownerId === AGENT_OWNER_ID)
+      .filter((session) => session.ownerId === AGENT_OWNER_ID && canUseBrowserSession(session.profileName, user))
       .map(publicSession);
   },
 
@@ -612,7 +625,79 @@ export const browserUseService = {
       .map(publicSession);
   },
 
+  async createManualSession(controller: string) {
+    const profileName = personalProfileName(controller);
+    const existing = [...sessions.values()].find(session => session.profileName === profileName && session.status === 'ready');
+    return existing ? publicSession(existing) : this.createAgentSession({ profileName });
+  },
+
+  async manualAction(sessionId: string, controller: BrowserSessionUser, input: BrowserManualAction) {
+    // Queue per session so fast keystrokes, clicks and polling cannot overtake each other.
+    const previous = manualQueues.get(sessionId) || Promise.resolve();
+    const task = previous.catch(() => undefined).then(async () => {
+      const session = sessions.get(sessionId);
+      const handle = handles.get(sessionId);
+      if (!readSettings().enabled || !session || session.status !== 'ready' || !handle?.page || !canUseBrowserSession(session.profileName, controller)) throw new Error('Browser session is not available.');
+      const lease = manualLeases.get(sessionId);
+      if (lease && lease.expires > Date.now() && lease.controller !== controller.id) throw new Error('Browser is controlled by another user.');
+      if (input.action === 'control') {
+        if (input.enabled) manualLeases.set(sessionId, { controller: controller.id, expires: Date.now() + MANUAL_LEASE_MS });
+        else manualLeases.delete(sessionId);
+      } else {
+        if (!lease || lease.expires <= Date.now() || lease.controller !== controller.id) throw new Error('Take manual control before interacting.');
+        lease.expires = Date.now() + MANUAL_LEASE_MS;
+      }
+      let page = openPage(handle);
+      try {
+        switch (input.action) {
+          case 'navigate': await page.goto(normalizeUrl(input.url), { waitUntil: 'domcontentloaded', timeout: 20_000 }); break;
+          case 'back': await page.goBack({ waitUntil: 'domcontentloaded', timeout: 20_000 }); break;
+          case 'forward': await page.goForward({ waitUntil: 'domcontentloaded', timeout: 20_000 }); break;
+          case 'reload': await page.reload({ waitUntil: 'domcontentloaded', timeout: 20_000 }); break;
+          case 'text': await page.keyboard.insertText(input.text); break;
+          case 'key': await page.keyboard.press(input.key); break;
+          case 'pointer': {
+            const viewport = page.viewportSize();
+            if (viewport && input.points.some(point => point.x >= viewport.width || point.y >= viewport.height)) throw new Error('Pointer is outside the viewport.');
+            const [first, ...rest] = input.points;
+            await page.mouse.move(first.x, first.y);
+            if (!rest.length) await page.mouse.click(first.x, first.y);
+            else {
+              await page.mouse.down();
+              try { for (const point of rest) await page.mouse.move(point.x, point.y); }
+              finally { await page.mouse.up(); }
+            }
+            session.cursor = { ...input.points[input.points.length - 1], actor: 'user' };
+            break;
+          }
+          case 'scroll': await page.mouse.move(input.x, input.y); await page.mouse.wheel(input.deltaX, input.deltaY); break;
+          case 'tab': {
+            const next = handle.context.pages()[input.index];
+            if (!next) throw new Error('Tab not found.');
+            handle.page = page = next;
+            break;
+          }
+        }
+        await captureSession(session, page);
+      } catch (error) {
+        // Finishing a login closes its popup mid-action; carry on in the tab left open.
+        if (!page.isClosed()) throw error;
+        page = openPage(handle);
+        await captureSession(session, page);
+      }
+      // Never put typed text, credentials or key values in session metadata/logs.
+      if (input.action !== 'snapshot') session.lastAction = `manual_${input.action}`;
+      if (manualLeases.has(sessionId)) manualLeases.get(sessionId)!.expires = Date.now() + MANUAL_LEASE_MS;
+      return { session: publicSession(session), tabs: handle.context.pages().map((tab: any, index: number) => ({ index, url: tab.url(), active: tab === page })) };
+    });
+    manualQueues.set(sessionId, task);
+    try { return await task; }
+    finally { if (manualQueues.get(sessionId) === task) manualQueues.delete(sessionId); }
+  },
+
   async getAgentSession(sessionId: string) {
+    const lease = manualLeases.get(sessionId);
+    if (lease && lease.expires > Date.now()) throw new Error('Manual control is active. Wait for the user to release the browser.');
     const settings = readSettings();
     if (!settings.enabled) {
       throw new Error('Browser agent tools are disabled.');

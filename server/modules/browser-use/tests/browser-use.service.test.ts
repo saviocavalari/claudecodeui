@@ -4,7 +4,7 @@ import test from 'node:test';
 import { browserUseService, buildMcpApiUrl } from '@/modules/browser-use/browser-use.service.js';
 
 test('browser monitor list starts empty without agent sessions', async () => {
-  const sessions = await browserUseService.listSessions();
+  const sessions = await browserUseService.listSessions({ id: '1', isAdmin: true });
 
   assert.deepEqual(sessions, []);
 });

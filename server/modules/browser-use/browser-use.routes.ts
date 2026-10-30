@@ -1,7 +1,9 @@
 import express from 'express';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 
 import { browserUseService } from '@/modules/browser-use/browser-use.service.js';
+import { parseBrowserManualAction } from '@/modules/browser-use/browser-manual-input.js';
+import type { BrowserSessionUser } from '@/shared/types.js';
 
 const router = express.Router();
 
@@ -112,9 +114,9 @@ router.post('/runtime/install', async (_req, res) => {
   }
 });
 
-router.get('/sessions', async (_req, res) => {
+router.get('/sessions', async (req, res) => {
   try {
-    res.json({ success: true, data: { sessions: await browserUseService.listSessions() } });
+    res.json({ success: true, data: { sessions: await browserUseService.listSessions(requestUser(req)) } });
   } catch (error) {
     sendError(
       res,
@@ -123,6 +125,34 @@ router.get('/sessions', async (_req, res) => {
       'Failed to list browser sessions.',
       error instanceof Error ? error.message : undefined,
     );
+  }
+});
+
+// These routes are mounted behind authenticateToken in server/index.ts.
+function requestUser(req: Request): BrowserSessionUser {
+  const user = (req as Request & { user?: { id?: string | number; role?: string } }).user;
+  if (!user?.id) throw new Error('Authentication required.');
+  return { id: String(user.id), isAdmin: user.role === 'admin' };
+}
+
+router.post('/sessions', async (req, res) => {
+  try {
+    const session = await browserUseService.createManualSession(requestUser(req).id);
+    res.json({ success: true, data: { session } });
+  } catch {
+    sendError(res, 400, 'BROWSER_USE_MANUAL_FAILED', 'Unable to create browser session.');
+  }
+});
+
+router.post('/sessions/:sessionId/input', async (req, res) => {
+  try {
+    const input = parseBrowserManualAction(req.body);
+    const result = await browserUseService.manualAction(readParam(req.params.sessionId), requestUser(req), input);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, data: result });
+  } catch {
+    // Do not echo browser/runtime errors: they may contain typed credentials.
+    sendError(res, 400, 'BROWSER_USE_MANUAL_FAILED', 'Browser action failed. Check the session and take control again.');
   }
 });
 

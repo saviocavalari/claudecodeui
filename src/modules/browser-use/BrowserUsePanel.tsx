@@ -18,7 +18,8 @@ import {
 import { cn } from '@/shared/utils';
 import { Badge, Button } from '@/shared/ui';
 import { api, readApiJson, ApiRequestError } from '@/shared/api';
-import type { SettingsMainTab } from '@/shared/types';
+import { BrowserManualSurface } from '@/modules/browser-use/BrowserManualSurface';
+import type { BrowserUseSession, SettingsMainTab } from '@/shared/types';
 import { localizeAction, localizeServerMessage } from '@/modules/browser-use/browserUseServerText';
 
 type BrowserUseStatus = {
@@ -29,29 +30,6 @@ type BrowserUseStatus = {
   installInProgress: boolean;
   sessionCount: number;
   message: string;
-};
-
-type BrowserUseSession = {
-  id: string;
-  status: 'ready' | 'stopped' | 'unavailable';
-  url: string | null;
-  title: string | null;
-  screenshotDataUrl: string | null;
-  createdAt: string;
-  updatedAt: string;
-  lastAction: string | null;
-  message: string | null;
-  createdBy: 'agent';
-  profileName: string | null;
-  viewport: {
-    width: number;
-    height: number;
-  } | null;
-  cursor: {
-    x: number;
-    y: number;
-    actor: 'agent';
-  } | null;
 };
 
 type BrowserUsePanelProps = {
@@ -66,6 +44,7 @@ const BROWSER_USE_PANEL_ERROR_KEYS: Record<string, string> = {
   BROWSER_USE_SESSIONS_LOAD_FAILED: 'browserUse.loadFailed',
   BROWSER_USE_SESSION_STOP_FAILED: 'browserUse.actionFailed',
   BROWSER_USE_SESSION_DELETE_FAILED: 'browserUse.actionFailed',
+  BROWSER_USE_MANUAL_FAILED: 'browserUse.manual.failed',
   BROWSER_USE_RUNTIME_INSTALL_FAILED: 'browserUse.installFailed',
 };
 
@@ -167,13 +146,6 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
       : status.installInProgress || isInstalling
         ? t('browserUse.runtimeInstalling')
         : t('browserUse.runtimeSetupRequired');
-
-  const cursorStyle = selectedSession?.cursor && selectedSession.viewport
-    ? {
-      left: `${(selectedSession.cursor.x / selectedSession.viewport.width) * 100}%`,
-      top: `${(selectedSession.cursor.y / selectedSession.viewport.height) * 100}%`,
-    }
-    : null;
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -331,32 +303,19 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
     </div>
   );
 
-  const renderBrowserSurface = (fullscreen = false) => (
-    <div className={cn('flex flex-1 items-center justify-center bg-neutral-950', fullscreen ? 'min-h-[80vh]' : 'min-h-[420px]')}>
-      {selectedSession?.screenshotDataUrl ? (
-        <div className="relative inline-block max-h-full">
-          <img
-            src={selectedSession.screenshotDataUrl}
-            alt={t('browserUse.screenshotAlt')}
-            className={fullscreen ? 'block max-h-[80vh] w-auto max-w-full object-contain' : 'block max-h-[72vh] w-auto max-w-full object-contain'}
-          />
-          {cursorStyle && (
-            <div
-              className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/90 bg-primary/80 shadow-[0_0_0_6px_hsl(var(--primary)/0.18)]"
-              style={cursorStyle}
-            >
-              <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" />
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="px-6 text-center">
-          <MonitorPlay className="mx-auto h-9 w-9 text-neutral-500" />
-          <div className="mt-3 text-sm font-medium text-neutral-100">{localizeServerMessage(selectedSession?.message, t) || t('browserUse.waitingScreenshot')}</div>
-          <p className="mt-1 text-xs text-neutral-400">{t('browserUse.waitingScreenshotHint')}</p>
-        </div>
-      )}
-    </div>
+  const updateManualSession = useCallback((session: BrowserUseSession) => {
+    setSessions(current => current.map(item => item.id === session.id ? session : item));
+  }, []);
+
+  const createSession = () => runAction(async () => {
+    const response = await api.browserUse.createSession();
+    const result = await readApiJson<{ data: { session: BrowserUseSession } }>(response);
+    setSelectedSessionId(result.data.session.id);
+  });
+
+  const renderBrowserSurface = (fullscreen = false) => selectedSession && (
+    <BrowserManualSurface key={selectedSession.id} session={selectedSession} fullscreen={fullscreen}
+      onSession={updateManualSession} visible={isVisible} />
   );
 
   return (
@@ -399,6 +358,10 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
         </div>
       </div>
 
+      <div className="flex items-center gap-3 border-b px-4 py-2">
+        <Button size="sm" onClick={createSession} disabled={isBusy || !status?.available}>{t('browserUse.manual.open')}</Button>
+        <span className="text-xs text-muted-foreground">{t('browserUse.manual.openHint')}</span>
+      </div>
       {error && (
         <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {error}
@@ -474,7 +437,10 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                {renderBrowserSurface()}
+                <div className={isFullscreen ? 'fixed inset-0 z-50 flex flex-col bg-background p-3' : 'flex min-h-0 flex-1 flex-col'}>
+                  {isFullscreen && <div className="flex justify-end pb-2"><Button variant="outline" size="sm" onClick={() => setIsFullscreen(false)}><X className="h-4 w-4" />{t('browserUse.close')}</Button></div>}
+                  {renderBrowserSurface(isFullscreen)}
+                </div>
               </div>
             </div>
           )}
@@ -536,20 +502,7 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
         </aside>
       </div>
 
-      {isFullscreen && selectedSession && (
-        <div className="fixed inset-0 z-50 bg-black/90 p-6">
-          <div className="flex h-full flex-col rounded-md border border-white/10 bg-black">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-sm text-white/80">
-              <div className="min-w-0 truncate">{selectedSession.title || selectedSession.url || t('browserUse.sessionFallback')}</div>
-              <Button variant="outline" size="sm" onClick={() => setIsFullscreen(false)}>
-                <X className="h-4 w-4" />
-                {t('browserUse.close')}
-              </Button>
-            </div>
-            {renderBrowserSurface(true)}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

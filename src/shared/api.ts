@@ -1,3 +1,4 @@
+import type { BrowserManualAction } from '@/shared/types';
 import {
   expireAuthSession,
   getStoredAuthToken,
@@ -549,6 +550,8 @@ export const api = {
   },
 
   browserUse: {
+    createSession: () => post('/api/browser-use/sessions'),
+    manualInput: (sessionId: string, input: BrowserManualAction) => post(`/api/browser-use/sessions/${encodeURIComponent(sessionId)}/input`, input),
     status: () => get('/api/browser-use/status'),
     settings: () => get('/api/browser-use/settings'),
     saveSettings: (settings: unknown) => put('/api/browser-use/settings', settings),

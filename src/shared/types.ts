@@ -1564,3 +1564,39 @@ type TaskStatus =
 
 /** A TaskMaster task's priority; high, medium and low are the known values and the string fallback tolerates anything else TaskMaster emits. */
 type TaskPriority = 'high' | 'medium' | 'low' | string;
+
+//----------------- BROWSER PANEL SESSION ------------
+/** Shared by the Browser panel and its manual surface; contains a screenshot and viewport but no runtime handles or credentials. */
+export type BrowserUseSession = {
+  id: string;
+  status: 'ready' | 'stopped' | 'unavailable';
+  url: string | null;
+  title: string | null;
+  screenshotDataUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastAction: string | null;
+  message: string | null;
+  createdBy: 'agent';
+  profileName: string | null;
+  viewport: {
+    width: number;
+    height: number;
+  } | null;
+  cursor: {
+    x: number;
+    y: number;
+    actor: 'agent' | 'user';
+  } | null;
+};
+
+/** Manual browser commands sent only to the authenticated Browser HTTP API; text must not be persisted or logged. */
+export type BrowserManualAction =
+  | { action: 'control'; enabled: boolean }
+  | { action: 'snapshot' | 'back' | 'forward' | 'reload' }
+  | { action: 'navigate'; url: string }
+  | { action: 'text'; text: string }
+  | { action: 'key'; key: string }
+  | { action: 'pointer'; points: { x: number; y: number }[] }
+  | { action: 'scroll'; x: number; y: number; deltaX: number; deltaY: number }
+  | { action: 'tab'; index: number };

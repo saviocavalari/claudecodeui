@@ -656,7 +656,17 @@
       "wait_for": "espera",
       "stop": "sessão parada",
       "expire": "sessão expirada",
-      "shutdown": "servidor desligado"
+      "shutdown": "servidor desligado",
+      "manual_control": "controle manual",
+      "manual_navigate": "navegação manual",
+      "manual_back": "voltar",
+      "manual_forward": "avançar",
+      "manual_reload": "recarregar",
+      "manual_text": "digitação manual",
+      "manual_key": "tecla manual",
+      "manual_pointer": "clique manual",
+      "manual_scroll": "rolagem manual",
+      "manual_tab": "troca de aba"
     },
     "serverMessages": {
       "disabled": "O Navegador está desativado nas configurações.",
@@ -673,6 +683,22 @@
       "sessionExpired": "A sessão do navegador expirou por inatividade.",
       "sessionStopped": "Sessão encerrada. Crie uma nova sessão para continuar navegando.",
       "sessionStoppedShutdown": "Sessão encerrada porque o servidor foi desligado."
+    },
+    "manual": {
+      "open": "Abrir navegador",
+      "openHint": "Abra uma sessão ou selecione uma existente para fazer login.",
+      "take": "Controlar",
+      "release": "Devolver ao agente",
+      "back": "Voltar",
+      "forward": "Avançar",
+      "reload": "Recarregar página",
+      "address": "Endereço do site",
+      "go": "Ir",
+      "failed": "A ação falhou. Confira a sessão e clique em Controlar novamente.",
+      "hint": "Controle manual: clique na página, digite, cole ou role. As ações do agente estão pausadas.",
+      "observe": "Clique em Controlar para interagir com esta sessão.",
+      "keyboard": "Toque aqui para digitar no campo selecionado da página",
+      "surface": "Página interativa do navegador"
     }
   },
   "browserUseSettings": {
