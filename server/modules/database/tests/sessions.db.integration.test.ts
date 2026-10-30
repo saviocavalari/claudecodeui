@@ -166,3 +166,20 @@ test('recent sessions are globally ordered, paginated, and limited to visible co
     );
   });
 });
+
+test('archiveSessionsIdleFor archives only sessions idle past the cutoff, and resuming one restores it', async () => {
+  await withIsolatedDatabase(() => {
+    const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    sessionsDb.createSession('session-recent', 'claude', '/workspace/demo-project', 'Recent', daysAgo(10), daysAgo(4));
+    sessionsDb.createSession('session-idle', 'claude', '/workspace/demo-project', 'Idle', daysAgo(10), daysAgo(6));
+
+    assert.equal(sessionsDb.archiveSessionsIdleFor(5), 1);
+    assert.equal(sessionsDb.getSessionById('session-recent')?.isArchived, 0);
+    assert.equal(sessionsDb.getSessionById('session-idle')?.isArchived, 1);
+    assert.equal(sessionsDb.archiveSessionsIdleFor(5), 0);
+
+    sessionsDb.createSession('session-idle', 'claude', '/workspace/demo-project', 'Idle', daysAgo(10), daysAgo(0));
+
+    assert.equal(sessionsDb.getSessionById('session-idle')?.isArchived, 0);
+  });
+});

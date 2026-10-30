@@ -14,3 +14,6 @@ export { sessionsService } from './services/sessions.service.js';
 
 export { initializeSessionsWatcher } from './services/sessions-watcher.service.js';
 export { closeSessionsWatcher } from './services/sessions-watcher.service.js';
+
+export { initializeSessionAutoArchive } from './services/session-auto-archive.service.js';
+export { closeSessionAutoArchive } from './services/session-auto-archive.service.js';

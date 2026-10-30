@@ -710,6 +710,24 @@ export const sessionsDb = {
     ).run(isArchived ? 1 : 0, sessionId);
   },
 
+  /**
+   * Archives every active session whose last activity is more than `idleDays`
+   * days old and returns how many rows were archived.
+   *
+   * Sets the same flag as a manual archive, so the row stays restorable and
+   * the upsert path un-archives it by itself once the conversation is resumed
+   * (its transcript becomes newer than `updated_at`).
+   */
+  archiveSessionsIdleFor(idleDays: number): number {
+    const db = getConnection();
+    return db.prepare(
+      `UPDATE sessions
+       SET isArchived = 1
+       WHERE isArchived = 0
+         AND julianday(COALESCE(updated_at, created_at)) < julianday('now', ?)`
+    ).run(`-${idleDays} days`).changes;
+  },
+
   deleteSessionById(sessionId: string): boolean {
     const db = getConnection();
     return db.prepare('DELETE FROM sessions WHERE session_id = ?').run(sessionId).changes > 0;

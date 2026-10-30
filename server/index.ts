@@ -11,7 +11,9 @@ import cors from 'cors';
 
 import { AppError, findApplicationRoot, getModuleDirectory, IS_PLATFORM, terminalTextStyles } from '@/shared/utils.js';
 import {
+    closeSessionAutoArchive,
     closeSessionsWatcher,
+    initializeSessionAutoArchive,
     initializeSessionsWatcher,
     providerRuntimeService,
 } from '@/modules/providers/index.js';
@@ -392,6 +394,9 @@ async function startServer() {
 
             // Start watching the projects folder for changes
             await initializeSessionsWatcher();
+            // Archives sessions left idle past the cutoff, now and hourly.
+            // After the watcher so it judges activity from the synced transcripts.
+            initializeSessionAutoArchive();
             // Sends anything that came due while the server was not running,
             // then keeps polling.
             initializeScheduledMessageDispatcher(providerRuntimeService);
@@ -408,6 +413,7 @@ async function startServer() {
         });
 
         await closeSessionsWatcher();
+        closeSessionAutoArchive();
         closeScheduledMessageDispatcher();
         // Clean up plugin processes on shutdown
         const shutdownRuntimeServices = async () => {
