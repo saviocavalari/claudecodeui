@@ -8,12 +8,21 @@ import test from 'node:test';
 
 import express, { type NextFunction, type Request, type Response } from 'express';
 
-import { closeConnection, initializeDatabase, sessionsDb } from '@/modules/database/index.js';
+import {
+  closeConnection,
+  initializeDatabase,
+  projectAccessDb,
+  projectsDb,
+  sessionsDb,
+  userDb,
+} from '@/modules/database/index.js';
 import providerRouter from '@/modules/providers/provider.routes.js';
 import { AppError } from '@/shared/utils.js';
 
+type RequestUser = { id: number; username: string; role: 'admin' | 'member' };
+
 async function withProviderServer(
-  run: (baseUrl: string, workspacePath: string) => Promise<void>,
+  run: (baseUrl: string, workspacePath: string, signInAs: (user: RequestUser) => void) => Promise<void>,
 ): Promise<void> {
   const previousDatabasePath = process.env.DATABASE_PATH;
   const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'provider-routes-'));
@@ -25,14 +34,15 @@ async function withProviderServer(
 
   // In the real server `authenticateToken` runs before this router and the
   // multi-user guards read `req.user` from it. The harness stands in for that
-  // with an admin, which is the identity these route tests exercise.
-  const authenticateAsAdmin = (req: Request, _res: Response, next: NextFunction) => {
-    (req as Request & { user?: unknown }).user = { id: 1, username: 'admin', role: 'admin' };
+  // with an admin unless a test signs in as someone else.
+  let requestUser: RequestUser = { id: 1, username: 'admin', role: 'admin' };
+  const authenticate = (req: Request, _res: Response, next: NextFunction) => {
+    (req as Request & { user?: unknown }).user = requestUser;
     next();
   };
   const app = express()
     .use(express.json())
-    .use('/api/providers', authenticateAsAdmin, providerRouter);
+    .use('/api/providers', authenticate, providerRouter);
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
@@ -48,7 +58,9 @@ async function withProviderServer(
 
   try {
     const address = server.address() as AddressInfo;
-    await run(`http://127.0.0.1:${address.port}`, path.join(tempDirectory, 'workspace'));
+    await run(`http://127.0.0.1:${address.port}`, path.join(tempDirectory, 'workspace'), (user) => {
+      requestUser = user;
+    });
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
@@ -84,6 +96,33 @@ test('session creation route names a CloudCLI session from the initial message',
       sessionsDb.getSessionById(payload.data.sessionId)?.custom_name,
       'abcd efg hij klm',
     );
+  });
+});
+
+test('archived session list shows a member only the projects granted to them', async () => {
+  await withProviderServer(async (baseUrl, workspacePath, signInAs) => {
+    const grantedPath = path.join(workspacePath, 'granted');
+    const otherPath = path.join(workspacePath, 'other');
+    sessionsDb.createSession('session-granted', 'claude', grantedPath, 'Granted');
+    sessionsDb.createSession('session-other', 'claude', otherPath, 'Other');
+    sessionsDb.updateSessionIsArchived('session-granted', true);
+    sessionsDb.updateSessionIsArchived('session-other', true);
+
+    const memberId = Number(userDb.createUser('member', 'hash', 'member').id);
+    const grantedProject = projectsDb.getProjectPath(grantedPath);
+    assert.ok(grantedProject);
+    projectAccessDb.grant(memberId, grantedProject.project_id);
+
+    const listArchivedIds = async () => {
+      const response = await fetch(`${baseUrl}/api/providers/sessions/archived`);
+      const payload = await response.json() as { data: { sessions: Array<{ sessionId: string }> } };
+      return payload.data.sessions.map((session) => session.sessionId).sort();
+    };
+
+    assert.deepEqual(await listArchivedIds(), ['session-granted', 'session-other']);
+
+    signInAs({ id: memberId, username: 'member', role: 'member' });
+    assert.deepEqual(await listArchivedIds(), ['session-granted']);
   });
 });
 

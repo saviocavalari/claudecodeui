@@ -973,8 +973,19 @@ router.get(
 
 router.get(
   '/sessions/archived',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const sessions = sessionsService.listArchivedSessions();
+  asyncHandler(async (req: Request, res: Response) => {
+    // Multi-user guard: the archive spans every project (idle sessions land
+    // there automatically), so a member only gets the sessions of projects
+    // granted to them, the same rule as the running list.
+    const user = (req as Request & { user?: { id?: number | string; role?: string } }).user;
+    const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
+    const sessions = sessionsService.listArchivedSessions().filter((session) => {
+      if (user?.role === 'admin') {
+        return true;
+      }
+
+      return Number.isFinite(userId) && userIdCanAccessProjectPath(userId, session.projectPath);
+    });
     res.json(createApiSuccessResponse({ sessions }));
   }),
 );
