@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 
 import { api } from '@/shared/api';
+import { consumirProjetoDoLink } from '@/modules/project-workspace/utils/projetoDoLink';
 import type { ServerEvent,
   AppTab,
   LLMProvider,
@@ -1016,6 +1017,21 @@ export function useProjectsState({
     },
     [isMobile, navigate],
   );
+
+  // Link direto vindo de fora (?projeto=<id ou caminho>): abre o projeto assim que a lista carrega.
+  useEffect(() => {
+    if (isLoadingProjects || projects.length === 0) {
+      return;
+    }
+    const alvo = consumirProjetoDoLink();
+    if (!alvo) {
+      return;
+    }
+    const projeto = projects.find((project) => project.projectId === alvo || project.fullPath === alvo);
+    if (projeto) {
+      handleProjectSelect(projeto);
+    }
+  }, [handleProjectSelect, isLoadingProjects, projects]);
 
   const handleSessionSelect = useCallback(
     (session: ProjectSession) => {

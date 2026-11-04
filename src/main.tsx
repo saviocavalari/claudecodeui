@@ -8,6 +8,10 @@ import 'katex/dist/katex.min.css'
 
 // Initialize i18n
 import '@/modules/i18n'
+import { capturarProjetoDoLink } from '@/modules/project-workspace/utils/projetoDoLink'
+
+// Link direto vindo da Arvore de Sistemas (?projeto=...): guarda antes que o login descarte a URL
+capturarProjetoDoLink()
 
 // React Scan is a render-diagnostics overlay, and an expensive one: measured on
 // this app it roughly halves the dev frame rate, adds ~14 MB of heap and injects
