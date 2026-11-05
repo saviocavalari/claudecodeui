@@ -143,7 +143,10 @@
     "matches_one": "{{count}} match",
     "matches_other": "{{count}} matches",
     "projectsScanned_one": "{{count}} project scanned",
-    "projectsScanned_other": "{{count}} projects scanned"
+    "projectsScanned_other": "{{count}} projects scanned",
+    "scopeMine": "My conversations",
+    "scopeAll": "All",
+    "scopeLabel": "Whose conversations to show"
   },
   "recent": {
     "title": "Recent conversations",

@@ -183,3 +183,34 @@ test('archiveSessionsIdleFor archives only sessions idle past the cutoff, and re
     assert.equal(sessionsDb.getSessionById('session-idle')?.isArchived, 0);
   });
 });
+
+test('getRecentSessionsPage narrows the feed by author and by granted projects', async () => {
+  await withIsolatedDatabase(() => {
+    sessionsDb.createAppSession('mine-a', 'claude', '/workspace/alpha', 'Mine A', { userId: 7, username: 'ana' });
+    sessionsDb.createAppSession('mine-b', 'claude', '/workspace/beta', 'Mine B', { userId: 7, username: 'ana' });
+    sessionsDb.createAppSession('other', 'claude', '/workspace/alpha', 'Other', { userId: 9, username: 'bia' });
+    sessionsDb.createSession('robot', 'claude', '/workspace/alpha', 'Robot');
+
+    const ids = (page: { sessions: Array<{ session_id: string }> }) =>
+      page.sessions.map((session) => session.session_id).sort();
+
+    assert.deepEqual(ids(sessionsDb.getRecentSessionsPage(10, 0)), ['mine-a', 'mine-b', 'other', 'robot']);
+
+    const mine = sessionsDb.getRecentSessionsPage(10, 0, { createdByUserId: 7 });
+    assert.deepEqual(ids(mine), ['mine-a', 'mine-b']);
+    assert.equal(mine.total, 2);
+
+    const granted = sessionsDb.getRecentSessionsPage(10, 0, { projectPaths: ['/workspace/alpha'] });
+    assert.deepEqual(ids(granted), ['mine-a', 'other', 'robot']);
+    assert.equal(granted.total, 3);
+
+    assert.deepEqual(
+      ids(sessionsDb.getRecentSessionsPage(10, 0, { createdByUserId: 7, projectPaths: ['/workspace/alpha'] })),
+      ['mine-a'],
+    );
+
+    const noGrants = sessionsDb.getRecentSessionsPage(10, 0, { projectPaths: [] });
+    assert.deepEqual(ids(noGrants), []);
+    assert.equal(noGrants.total, 0);
+  });
+});

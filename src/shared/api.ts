@@ -253,8 +253,10 @@ export const api = {
   sessionDetails: (sessionId: string) =>
     get(`/api/providers/sessions/${encodeURIComponent(sessionId)}`),
   runningSessions: () => get('/api/providers/sessions/running'),
-  recentConversations: ({ limit = 40, offset = 0 }: { limit?: number; offset?: number } = {}) =>
-    get(`/api/providers/sessions/recent${query({ limit, offset })}`),
+  recentConversations: (
+    { limit = 40, offset = 0, scope = 'all' }: { limit?: number; offset?: number; scope?: 'mine' | 'all' } = {},
+  ) =>
+    get(`/api/providers/sessions/recent${query({ limit, offset, ...(scope === 'mine' ? { scope } : {}) })}`),
   providerSessionId: (sessionId: string) =>
     get(`/api/providers/sessions/${encodeURIComponent(sessionId)}/provider-id`),
   restoreSession: (sessionId: string) => post(`/api/providers/sessions/${sessionId}/restore`),

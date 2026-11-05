@@ -13,6 +13,7 @@ type SessionSummary = {
   summary: string;
   messageCount: number;
   lastActivity: string;
+  createdByUserId: number | null;
   createdByUsername: string | null;
 };
 
@@ -22,6 +23,7 @@ type SessionRepositoryRow = {
   custom_name?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
+  created_by_user_id?: number | null;
   created_by_username?: string | null;
 };
 
@@ -132,6 +134,7 @@ function mapSessionRowToSummary(row: SessionRepositoryRow): SessionSummary {
     summary: row.custom_name || '',
     messageCount: 0,
     lastActivity: row.updated_at ?? row.created_at ?? new Date().toISOString(),
+    createdByUserId: row.created_by_user_id ?? null,
     createdByUsername: row.created_by_username ?? null,
   };
 }

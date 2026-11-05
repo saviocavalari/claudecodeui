@@ -89,6 +89,8 @@ function Sidebar({
     searchFilter,
     searchMode,
     setSearchMode,
+    sessionScope,
+    setSessionScope,
     conversationResults,
     isSearching,
     searchProgress,
@@ -285,6 +287,8 @@ function Sidebar({
             onSearchFilterChange={setSearchFilter}
             onClearSearchFilter={() => setSearchFilter('')}
             searchMode={searchMode}
+            sessionScope={sessionScope}
+            onSessionScopeChange={setSessionScope}
             onSearchModeChange={(mode) => {
               setSearchMode(mode);
               if (mode === 'projects') clearConversationResults();

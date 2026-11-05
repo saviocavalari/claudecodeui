@@ -966,7 +966,22 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const limit = parseBoundedIntegerQuery(req.query.limit, 'limit', 40, 1, 100);
     const offset = parseBoundedIntegerQuery(req.query.offset, 'offset', 0, 0);
-    const page = sessionsService.listRecentSessions(limit, offset);
+    const user = (req as Request & { user?: { id?: number | string; role?: string } }).user;
+    const userId = typeof user?.id === 'number' ? user.id : Number(user?.id);
+    const hasUserId = Number.isFinite(userId);
+    // `scope=mine` narrows the feed to the sessions this login opened.
+    const onlyMine = req.query.scope === 'mine';
+    // Multi-user guard: a member only gets sessions of granted projects, the
+    // same rule as the running and archived lists.
+    const projectPaths = user?.role === 'admin'
+      ? null
+      : (hasUserId ? projectAccessDb.listProjectIdsForUser(userId) : [])
+          .map((projectId) => projectsDb.getProjectById(projectId)?.project_path)
+          .filter((projectPath): projectPath is string => typeof projectPath === 'string');
+    const page = sessionsService.listRecentSessions(limit, offset, {
+      createdByUserId: onlyMine ? (hasUserId ? userId : -1) : null,
+      projectPaths,
+    });
     res.json(createApiSuccessResponse(page));
   }),
 );

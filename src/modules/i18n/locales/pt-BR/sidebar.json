@@ -140,7 +140,10 @@
     "matches_one": "{{count}} correspondência",
     "matches_other": "{{count}} correspondências",
     "projectsScanned_one": "{{count}} projeto verificado",
-    "projectsScanned_other": "{{count}} projetos verificados"
+    "projectsScanned_other": "{{count}} projetos verificados",
+    "scopeMine": "Minhas conversas",
+    "scopeAll": "Todas",
+    "scopeLabel": "Quais conversas mostrar"
   },
   "deleteConfirmation": {
     "deleteProject": "Remover projeto",

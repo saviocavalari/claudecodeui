@@ -28,6 +28,13 @@ type RecentSessionsPage = {
   total: number;
 };
 
+export type RecentSessionsFilters = {
+  // Only sessions opened by this user (sidebar "Minhas" view).
+  createdByUserId?: number | null;
+  // Only sessions inside these projects (member grants). Undefined = no limit.
+  projectPaths?: string[] | null;
+};
+
 const SESSION_ROW_COLUMNS =
   'session_id, provider, provider_session_id, project_path, jsonl_path, custom_name, pending_context, model, effort, forked_from_session_id, isArchived, created_at, updated_at, created_by_user_id, created_by_username';
 
@@ -563,11 +570,30 @@ export const sessionsDb = {
    * and correctly ordered across projects instead of flattening only the
    * per-project slices already loaded by the client.
    */
-  getRecentSessionsPage(limit: number, offset: number): RecentSessionsPage {
+  getRecentSessionsPage(
+    limit: number,
+    offset: number,
+    filters: RecentSessionsFilters = {},
+  ): RecentSessionsPage {
     const db = getConnection();
+    const filterParams: Array<number | string> = [];
+    let filterClause = '';
+    if (typeof filters.createdByUserId === 'number') {
+      filterClause += ' AND sessions.created_by_user_id = ?';
+      filterParams.push(filters.createdByUserId);
+    }
+    if (Array.isArray(filters.projectPaths)) {
+      // An empty grant list must match nothing, not everything.
+      const paths = filters.projectPaths.map((projectPath) => normalizeProjectPath(projectPath));
+      filterClause += paths.length > 0
+        ? ` AND sessions.project_path IN (${paths.map(() => '?').join(', ')})`
+        : ' AND 0';
+      filterParams.push(...paths);
+    }
     const visibilityClause = `
       sessions.isArchived = 0
       AND (projects.isArchived IS NULL OR projects.isArchived = 0)
+      ${filterClause}
     `;
     const rows = db
       .prepare(
@@ -579,7 +605,7 @@ export const sessionsDb = {
                   sessions.session_id DESC
          LIMIT ? OFFSET ?`
       )
-      .all(limit, offset) as SessionRow[];
+      .all(...filterParams, limit, offset) as SessionRow[];
     const countRow = db
       .prepare(
         `SELECT COUNT(*) AS count
@@ -587,7 +613,7 @@ export const sessionsDb = {
          LEFT JOIN projects ON projects.project_path = sessions.project_path
          WHERE ${visibilityClause}`
       )
-      .get() as { count: number } | undefined;
+      .get(...filterParams) as { count: number } | undefined;
 
     return {
       sessions: normalizeSessionRows(rows),

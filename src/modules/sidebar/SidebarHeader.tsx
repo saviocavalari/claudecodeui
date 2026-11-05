@@ -1,11 +1,11 @@
-import { Activity, Archive, Folder, FolderPlus, MessageSquare, Plus, RefreshCw, Search, X, PanelLeftClose } from 'lucide-react';
+import { Activity, Archive, Folder, FolderPlus, MessageSquare, Plus, RefreshCw, Search, User, Users, X, PanelLeftClose } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Button, Input, Tooltip } from '@/shared/ui';
 import { CLOUDCLI_WORDMARK_FONT_FAMILY } from '@/shared/constants';
 import { IS_PLATFORM,cn } from '@/shared/utils';
 import { useAuth } from '@/modules/auth';
-import type { SidebarSearchMode } from '@/shared/types';
+import type { SidebarSearchMode, SidebarSessionScope } from '@/shared/types';
 import GitHubStarBadge from '@/modules/sidebar/GitHubStarBadge';
 
 const MOD_KEY =
@@ -24,6 +24,8 @@ type SidebarHeaderProps = {
   onClearSearchFilter: () => void;
   searchMode: SidebarSearchMode;
   onSearchModeChange: (mode: SidebarSearchMode) => void;
+  sessionScope: SidebarSessionScope;
+  onSessionScopeChange: (scope: SidebarSessionScope) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   onCreateProject: () => void;
@@ -50,6 +52,51 @@ function LogoBlock({ t }: { t: TFunction }) {
   );
 }
 
+/** "Minhas | Todas" switch: lists only the logged-in user's conversations, or everyone's. */
+function SessionScopeToggle({
+  scope,
+  onChange,
+  compact,
+  t,
+}: {
+  scope: SidebarSessionScope;
+  onChange: (scope: SidebarSessionScope) => void;
+  compact: boolean;
+  t: TFunction;
+}) {
+  const options: Array<{ value: SidebarSessionScope; label: string; Icon: typeof User }> = [
+    { value: 'mine', label: t('search.scopeMine', 'My conversations'), Icon: User },
+    { value: 'all', label: t('search.scopeAll', 'All'), Icon: Users },
+  ];
+
+  return (
+    <div
+      className="flex rounded-lg bg-muted/50 p-0.5"
+      role="group"
+      aria-label={t('search.scopeLabel', 'Whose conversations to show')}
+    >
+      {options.map(({ value, label, Icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onChange(value)}
+          aria-pressed={scope === value}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-normal transition-all',
+            compact ? 'py-1' : 'py-1.5',
+            scope === value
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <Icon className="h-3 w-3" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Rendered by SidebarContent at the top of the panel for the search box, search-mode tabs, refresh and new-project actions. */
 export default function SidebarHeader({
   isPWA,
@@ -64,6 +111,8 @@ export default function SidebarHeader({
   onClearSearchFilter,
   searchMode,
   onSearchModeChange,
+  sessionScope,
+  onSessionScopeChange,
   onRefresh,
   isRefreshing,
   onCreateProject,
@@ -227,6 +276,9 @@ export default function SidebarHeader({
                 </button>
               </Tooltip>
             </div>
+            {searchMode !== 'archived' && (
+              <SessionScopeToggle scope={sessionScope} onChange={onSessionScopeChange} compact={true} t={t} />
+            )}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
               <Input
@@ -370,6 +422,9 @@ export default function SidebarHeader({
                 </button>
               </Tooltip>
             </div>
+            {searchMode !== 'archived' && (
+              <SessionScopeToggle scope={sessionScope} onChange={onSessionScopeChange} compact={false} t={t} />
+            )}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
               <Input

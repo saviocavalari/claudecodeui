@@ -4,7 +4,8 @@ import type { TFunction } from 'i18next';
 import { api } from '@/shared/api';
 import { subscribeToUserPreferences } from '@/shared/userSettings';
 import { usePaletteOps } from '@/modules/command-palette';
-import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarSearchMode } from '@/shared/types';
+import { useAuth } from '@/modules/auth';
+import type { ArchivedProjectListItem, ArchivedSessionListItem, ConversationProjectResult, ConversationSearchResults, LLMProvider, Project, ProjectSession, ProjectSortOrder, RecentConversationListItem, SearchProgress, ActiveSidebarRename, PendingSidebarDeletion, SessionTitleSearchResult, SessionWithProvider, SidebarSearchMode, SidebarSessionScope } from '@/shared/types';
 import {
   filterProjects,
   getAllSessions,
@@ -14,6 +15,8 @@ import {
   clearLegacyStarredProjectIds,
   readLegacyStarredProjectIds,
   readProjectSortOrder,
+  readSidebarSessionScope,
+  writeSidebarSessionScope,
 } from '@/modules/sidebar/utils/sidebarStoredPreferences';
 
 
@@ -96,6 +99,18 @@ export function useSidebarController({
   const [pendingDeletion, setPendingDeletion] = useState<PendingSidebarDeletion | null>(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [searchMode, setSearchMode] = useState<SidebarSearchMode>('projects');
+  const { user } = useAuth();
+  const currentUserId = user?.id === undefined || user?.id === null ? null : Number(user.id);
+  const currentUsername = user?.username ?? null;
+  const [sessionScope, setSessionScopeState] = useState<SidebarSessionScope>(readSidebarSessionScope);
+  // Read by the recent-conversations fetch so changing the scope does not
+  // recreate every callback that depends on it.
+  const sessionScopeRef = useRef(sessionScope);
+  sessionScopeRef.current = sessionScope;
+  const setSessionScope = useCallback((scope: SidebarSessionScope) => {
+    setSessionScopeState(scope);
+    writeSidebarSessionScope(scope);
+  }, []);
   const [conversationResults, setConversationResults] = useState<ConversationSearchResults | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchProgress, setSearchProgress] = useState<SearchProgress | null>(null);
@@ -225,7 +240,7 @@ export function useSidebarController({
     setRecentConversationsError(false);
 
     try {
-      const response = await api.recentConversations({ limit: 40, offset });
+      const response = await api.recentConversations({ limit: 40, offset, scope: sessionScopeRef.current });
       if (!response.ok) {
         throw new Error(`Failed to load recent conversations: ${response.status}`);
       }
@@ -318,7 +333,7 @@ export function useSidebarController({
     }
 
     reloadRecentConversations();
-  }, [debouncedSearchQuery, reloadRecentConversations, searchMode]);
+  }, [debouncedSearchQuery, reloadRecentConversations, searchMode, sessionScope]);
 
   useEffect(() => {
     if (searchMode !== 'archived') {
@@ -582,7 +597,20 @@ export function useSidebarController({
     [resolveProjectStarState],
   );
 
-  const getProjectSessions = useCallback((project: Project) => getAllSessions(project), []);
+  // "Minhas" keeps only the sessions this login opened. Every active session of
+  // a project already arrives in the first page (auto-archive keeps them few),
+  // so filtering here does not hide sessions that were never loaded.
+  const getProjectSessions = useCallback((project: Project) => {
+    const sessions = getAllSessions(project);
+    if (sessionScope === 'all') {
+      return sessions;
+    }
+    return sessions.filter((session) => (
+      currentUserId !== null && Number.isFinite(currentUserId) && typeof session.createdByUserId === 'number'
+        ? session.createdByUserId === currentUserId
+        : Boolean(currentUsername) && session.createdByUsername === currentUsername
+    ));
+  }, [currentUserId, currentUsername, sessionScope]);
 
   const loadMoreSessionsForProject = useCallback(async (projectId: string) => {
     if (!onLoadMoreSessions) {
@@ -860,10 +888,10 @@ export function useSidebarController({
       setPendingDeletion({
         kind: 'project',
         project,
-        sessionCount: getProjectSessions(project).length,
+        sessionCount: getAllSessions(project).length,
       });
     },
-    [getProjectSessions],
+    [],
   );
 
   const confirmDeleteProject = useCallback(async (deleteData = false) => {
@@ -1103,6 +1131,8 @@ export function useSidebarController({
     toggleStarProject,
     isProjectStarred,
     getProjectSessions,
+    sessionScope,
+    setSessionScope,
     loadMoreSessionsForProject,
     startEditingProject,
     startEditingSession,

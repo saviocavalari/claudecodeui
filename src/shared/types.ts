@@ -83,6 +83,10 @@ export type ProjectSession = {
   // Tags the session with the owning project's DB `projectId` so UI handlers
   // (session switching, sidebar focus, etc.) can match against selectedProject.
   __projectId?: string;
+  // Login that opened the session in the app; null when it came from outside
+  // the app (terminal, scheduled robots) or predates authorship tracking.
+  createdByUserId?: number | null;
+  createdByUsername?: string | null;
   [key: string]: unknown;
 };
 
@@ -1291,6 +1295,9 @@ export type ProjectSortOrder = 'name' | 'date';
 
 /** Which list the sidebar is currently showing: projects, conversation search results, running sessions or archived items. */
 export type SidebarSearchMode = 'projects' | 'conversations' | 'running' | 'archived';
+
+/** Whose conversations the sidebar lists: only the logged-in user's, or everyone's. */
+export type SidebarSessionScope = 'mine' | 'all';
 
 /** A Project narrowed to the archived state so archived entries can be listed and restored without being mistaken for active projects. */
 export type ArchivedProjectListItem = Project & { isArchived: true };
