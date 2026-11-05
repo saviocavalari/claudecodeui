@@ -3,7 +3,9 @@
  *
  * `admin` users bypass every check (they own the installation). `member` users
  * may only see and touch projects explicitly granted to them in the
- * `user_projects` table. These helpers are the single source of truth used by
+ * `user_projects` table. `supervisor` users have the same project access as a
+ * member, plus they may grant/revoke to members the projects they themselves
+ * were granted (see admin.routes.js). These helpers are the single source of truth used by
  * the REST routes and the websocket (chat + shell) handlers alike.
  */
 
@@ -12,6 +14,11 @@ import { projectAccessDb, projectsDb } from '@/modules/database/index.js';
 /** True when the authenticated user is an admin. */
 export function isAdmin(user) {
   return Boolean(user) && user.role === 'admin';
+}
+
+/** True when the user can open the user-management panel (admin or supervisor). */
+export function isUserManager(user) {
+  return Boolean(user) && (user.role === 'admin' || user.role === 'supervisor');
 }
 
 /** Access check by DB project_id. */
@@ -65,5 +72,11 @@ export function enforceProjectFieldAccess(req, res, next) {
 /** Express middleware: admin-only route guard. */
 export function requireAdmin(req, res, next) {
   if (isAdmin(req.user)) return next();
+  return res.status(403).json({ error: 'Admin privileges required.' });
+}
+
+/** Express middleware: admin or supervisor (user-management panel). */
+export function requireUserManager(req, res, next) {
+  if (isUserManager(req.user)) return next();
   return res.status(403).json({ error: 'Admin privileges required.' });
 }

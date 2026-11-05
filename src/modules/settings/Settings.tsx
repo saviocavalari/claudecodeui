@@ -43,6 +43,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
   const { t } = useTranslation('settings');
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const canManageUsers = isAdmin || user?.role === 'supervisor';
   const desktopNotificationsBridge = useMemo(() => (
     typeof window === 'undefined'
       ? null
@@ -172,7 +173,12 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
 
         {/* Body: sidebar + content */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
-          <SettingsSidebar activeTab={activeTab} onChange={setActiveTab} isAdmin={isAdmin} />
+          <SettingsSidebar
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            isAdmin={isAdmin}
+            canManageUsers={canManageUsers}
+          />
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
@@ -236,7 +242,7 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'agents' }: Set
 
               {activeTab === 'account' && <AccountSettingsTab />}
 
-              {activeTab === 'users' && isAdmin && <UsersAdminTab />}
+              {activeTab === 'users' && canManageUsers && <UsersAdminTab />}
 
               {activeTab === 'activity' && isAdmin && <ActivityAdminTab />}
             </div>

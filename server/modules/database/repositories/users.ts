@@ -64,7 +64,7 @@ export const userDb = {
   createUser(
     username: string,
     passwordHash: string,
-    role: 'admin' | 'member' = 'member'
+    role: 'admin' | 'supervisor' | 'member' = 'member'
   ): CreateUserResult {
     const db = getConnection();
     const result = db
@@ -195,8 +195,8 @@ export const userDb = {
     );
   },
 
-  /** Changes a user's role between 'admin' and 'member'. */
-  setRole(userId: number, role: 'admin' | 'member'): void {
+  /** Changes a user's role ('admin', 'supervisor' or 'member'). */
+  setRole(userId: number, role: 'admin' | 'supervisor' | 'member'): void {
     const db = getConnection();
     db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
   },

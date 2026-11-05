@@ -30,6 +30,7 @@ import {
     enforceProjectFieldAccess,
     enforceProjectIdAccess,
     requireAdmin,
+    requireUserManager,
     validateApiKey,
 } from './modules/auth/index.js';
 import { taskmasterRoutes } from './modules/taskmaster/index.js';
@@ -208,7 +209,7 @@ app.use('/api/notifications', authenticateToken, notificationRoutes);
 app.use('/api/user', authenticateToken, userRoutes);
 
 // Admin API Routes (admin only): user management + per-user project access
-app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
+app.use('/api/admin', authenticateToken, requireUserManager, adminRoutes);
 
 // Plugins API Routes (protected)
 app.use('/api/plugins', authenticateToken, pluginsRoutes);

@@ -1,9 +1,10 @@
 /**
  * Admin routes: user management and per-user project access.
  *
- * Every route here is mounted behind `authenticateToken` + `requireAdmin`, so
- * only the installation owner (an admin) can list users, enable/disable them,
- * change roles, and grant/revoke which projects each member can work on.
+ * Mounted behind `authenticateToken` + `requireUserManager`, so admins and
+ * supervisors reach this router. Admins can do everything. Supervisors only
+ * see members and can grant/revoke to them the projects the supervisor was
+ * granted; every other route is guarded with `requireAdmin`.
  */
 
 import path from 'node:path';
@@ -12,6 +13,8 @@ import spawn from 'cross-spawn';
 import express from 'express';
 
 import { activityLogDb, projectAccessDb, projectsDb, userDb } from '@/modules/database/index.js';
+
+import { isAdmin, requireAdmin } from './project-access.js';
 
 const router = express.Router();
 
@@ -32,6 +35,25 @@ function runSystemctl(args) {
   });
 }
 
+const ROLES = new Set(['admin', 'supervisor', 'member']);
+
+/** Projects the caller may hand out: null = all (admin), else the own grants. */
+function grantableProjectIds(user) {
+  if (isAdmin(user)) return null;
+  return new Set(projectAccessDb.listProjectIdsForUser(user.id));
+}
+
+function findUser(userId) {
+  return userDb.listUsers().find((u) => u.id === userId);
+}
+
+/** Supervisors may only manage plain members. */
+function canManageTarget(caller, target) {
+  if (!target) return false;
+  if (isAdmin(caller)) return true;
+  return target.role === 'member';
+}
+
 function projectDisplayName(row) {
   const custom = (row.custom_project_name || '').trim();
   if (custom) return custom;
@@ -41,15 +63,24 @@ function projectDisplayName(row) {
 // List every user with the project ids currently granted to them.
 router.get('/users', (req, res) => {
   try {
-    const users = userDb.listUsers().map((user) => ({
-      ...user,
-      is_active: Boolean(user.is_active),
-      can_use_global_provider_account: Boolean(user.can_use_global_provider_account),
-      projectIds:
-        user.role === 'admin'
+    const grantable = grantableProjectIds(req.user);
+    const users = userDb.listUsers()
+      .filter((user) => canManageTarget(req.user, user))
+      .map((user) => {
+        let projectIds = user.role === 'admin'
           ? 'all'
-          : projectAccessDb.listProjectIdsForUser(user.id),
-    }));
+          : projectAccessDb.listProjectIdsForUser(user.id);
+        // A supervisor only sees grants for the projects they can hand out.
+        if (grantable && Array.isArray(projectIds)) {
+          projectIds = projectIds.filter((id) => grantable.has(id));
+        }
+        return {
+          ...user,
+          is_active: Boolean(user.is_active),
+          can_use_global_provider_account: Boolean(user.can_use_global_provider_account),
+          projectIds,
+        };
+      });
     res.json({ users });
   } catch (error) {
     console.error('[admin] list users error:', error);
@@ -69,7 +100,7 @@ router.get('/pending-count', (req, res) => {
 });
 
 // Recent activity (who did what, when) for the audit panel.
-router.get('/activity', (req, res) => {
+router.get('/activity', requireAdmin, (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
     res.json({ activity: activityLogDb.list(limit) });
@@ -82,7 +113,7 @@ router.get('/activity', (req, res) => {
 // Restart only the CloudCLI web service. The route is mounted behind the
 // admin guard, verifies non-interactive systemd access first, and returns
 // before the current process is stopped so the browser can enter reconnect mode.
-router.post('/restart', async (req, res) => {
+router.post('/restart', requireAdmin, async (req, res) => {
   const preflight = await runSystemctl(['is-active', '--quiet', CLOUDCLI_SERVICE_NAME]);
   if (!preflight.ok) {
     console.error('[admin] restart preflight failed:', preflight.error);
@@ -106,7 +137,10 @@ router.post('/restart', async (req, res) => {
 // List all active projects (for the access checkboxes in the admin UI).
 router.get('/projects', (req, res) => {
   try {
-    const projects = projectsDb.getProjectPaths().map((row) => ({
+    const grantable = grantableProjectIds(req.user);
+    const projects = projectsDb.getProjectPaths()
+      .filter((row) => !grantable || grantable.has(row.project_id))
+      .map((row) => ({
       projectId: row.project_id,
       name: projectDisplayName(row),
       path: row.project_path,
@@ -120,7 +154,7 @@ router.get('/projects', (req, res) => {
 });
 
 // Enable or disable a user account.
-router.post('/users/:id/active', (req, res) => {
+router.post('/users/:id/active', requireAdmin, (req, res) => {
   try {
     const userId = Number(req.params.id);
     const isActive = Boolean(req.body?.isActive);
@@ -144,14 +178,14 @@ router.post('/users/:id/active', (req, res) => {
   }
 });
 
-// Change a user's role between 'admin' and 'member'.
-router.post('/users/:id/role', (req, res) => {
+// Change a user's role ('admin', 'supervisor' or 'member').
+router.post('/users/:id/role', requireAdmin, (req, res) => {
   try {
     const userId = Number(req.params.id);
-    const role = req.body?.role === 'admin' ? 'admin' : 'member';
+    const role = ROLES.has(req.body?.role) ? req.body.role : 'member';
 
     // Prevent removing the last admin (which would lock everyone out of admin).
-    if (role === 'member') {
+    if (role !== 'admin') {
       const target = userDb.listUsers().find((u) => u.id === userId);
       if (target?.role === 'admin' && userDb.countAdmins() <= 1) {
         return res.status(400).json({ error: 'Cannot demote the last admin.' });
@@ -167,7 +201,7 @@ router.post('/users/:id/role', (req, res) => {
 });
 
 // Grant or revoke use of the host-level Claude/Codex account for one user.
-router.post('/users/:id/global-provider-account', (req, res) => {
+router.post('/users/:id/global-provider-account', requireAdmin, (req, res) => {
   try {
     const userId = Number(req.params.id);
     const allowed = req.body?.allowed;
@@ -200,10 +234,30 @@ router.post('/users/:id/global-provider-account', (req, res) => {
 router.put('/users/:id/projects', (req, res) => {
   try {
     const userId = Number(req.params.id);
-    const projectIds = Array.isArray(req.body?.projectIds)
+    const requested = Array.isArray(req.body?.projectIds)
       ? req.body.projectIds.map((id) => String(id))
       : [];
+    if (!canManageTarget(req.user, findUser(userId))) {
+      return res.status(403).json({ error: 'You cannot manage this user.' });
+    }
+
+    const grantable = grantableProjectIds(req.user);
+    let projectIds = requested;
+    if (grantable) {
+      // Supervisor: only the projects they hold change; grants outside their
+      // reach (given by an admin) are kept untouched.
+      const kept = projectAccessDb.listProjectIdsForUser(userId)
+        .filter((id) => !grantable.has(id));
+      const allowed = requested.filter((id) => grantable.has(id));
+      projectIds = Array.from(new Set([...kept, ...allowed]));
+    }
     projectAccessDb.setProjectsForUser(userId, projectIds);
+    activityLogDb.record({
+      userId: req.user.id,
+      username: req.user.username,
+      action: 'user.projects',
+      detail: `${findUser(userId)?.username ?? userId}: ${projectIds.length} projeto(s)`,
+    });
     res.json({ success: true, projectIds });
   } catch (error) {
     console.error('[admin] set projects error:', error);
@@ -214,7 +268,13 @@ router.put('/users/:id/projects', (req, res) => {
 // Grant access to a single project.
 router.post('/users/:id/projects/:projectId', (req, res) => {
   try {
-    projectAccessDb.grant(Number(req.params.id), String(req.params.projectId));
+    const userId = Number(req.params.id);
+    const projectId = String(req.params.projectId);
+    const grantable = grantableProjectIds(req.user);
+    if (!canManageTarget(req.user, findUser(userId)) || (grantable && !grantable.has(projectId))) {
+      return res.status(403).json({ error: 'You cannot manage this access.' });
+    }
+    projectAccessDb.grant(userId, projectId);
     res.json({ success: true });
   } catch (error) {
     console.error('[admin] grant error:', error);
@@ -225,7 +285,13 @@ router.post('/users/:id/projects/:projectId', (req, res) => {
 // Revoke access to a single project.
 router.delete('/users/:id/projects/:projectId', (req, res) => {
   try {
-    projectAccessDb.revoke(Number(req.params.id), String(req.params.projectId));
+    const userId = Number(req.params.id);
+    const projectId = String(req.params.projectId);
+    const grantable = grantableProjectIds(req.user);
+    if (!canManageTarget(req.user, findUser(userId)) || (grantable && !grantable.has(projectId))) {
+      return res.status(403).json({ error: 'You cannot manage this access.' });
+    }
+    projectAccessDb.revoke(userId, projectId);
     res.json({ success: true });
   } catch (error) {
     console.error('[admin] revoke error:', error);
@@ -234,7 +300,7 @@ router.delete('/users/:id/projects/:projectId', (req, res) => {
 });
 
 // Delete a user account entirely (cascades project grants).
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', requireAdmin, (req, res) => {
   try {
     const userId = Number(req.params.id);
     if (userId === req.user.id) {

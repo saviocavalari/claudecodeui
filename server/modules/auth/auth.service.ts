@@ -1,6 +1,6 @@
 import { AppError } from '@/shared/utils.js';
 
-type UserRole = 'admin' | 'member';
+type UserRole = 'admin' | 'supervisor' | 'member';
 
 type AuthUser = {
   id: number | bigint;
@@ -16,7 +16,7 @@ type AuthLoginUser = Omit<AuthUser, 'role'> & {
 };
 
 function toUserRole(role: unknown): UserRole {
-  return role === 'admin' ? 'admin' : 'member';
+  return role === 'admin' || role === 'supervisor' ? role : 'member';
 }
 
 type AuthDependencies = {

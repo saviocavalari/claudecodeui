@@ -14,6 +14,7 @@ export {
   enforceProjectFieldAccess,
   enforceProjectIdAccess,
   requireAdmin,
+  requireUserManager,
 } from './project-access.js';
 
 // adminRoutes: user management and per-user project grants (admin only).

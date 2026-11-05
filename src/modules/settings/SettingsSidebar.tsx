@@ -9,6 +9,8 @@ type SettingsSidebarProps = {
   activeTab: SettingsMainTab;
   onChange: (tab: SettingsMainTab) => void;
   isAdmin?: boolean;
+  // Admin or supervisor: may open the user-management tab.
+  canManageUsers?: boolean;
 };
 
 type NavItem = {
@@ -18,6 +20,7 @@ type NavItem = {
   // Rendered as-is (no i18n lookup) when set — used for the admin-only tab.
   label?: string;
   adminOnly?: boolean;
+  managerOnly?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -31,14 +34,21 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'plugins', labelKey: 'mainTabs.plugins', icon: Puzzle },
   { id: 'notifications', labelKey: 'mainTabs.notifications', icon: Bell },
   { id: 'account', labelKey: '', label: 'Minha conta', icon: Lock },
-  { id: 'users', labelKey: '', label: 'Usuários', icon: Users, adminOnly: true },
+  { id: 'users', labelKey: '', label: 'Usuários', icon: Users, managerOnly: true },
   { id: 'activity', labelKey: '', label: 'Atividade', icon: Activity, adminOnly: true },
   { id: 'about', labelKey: 'mainTabs.about', icon: Info },
 ];
 
-export default function SettingsSidebar({ activeTab, onChange, isAdmin = false }: SettingsSidebarProps) {
+export default function SettingsSidebar({
+  activeTab,
+  onChange,
+  isAdmin = false,
+  canManageUsers = false,
+}: SettingsSidebarProps) {
   const { t } = useTranslation('settings');
-  const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const navItems = NAV_ITEMS.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!item.managerOnly || canManageUsers),
+  );
   const renderLabel = (item: NavItem) => (item.label ? item.label : t(item.labelKey));
 
   return (

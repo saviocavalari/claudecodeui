@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, ShieldCheck, Trash2, UserCog } from 'lucide-react';
+import { Eye, Loader2, RefreshCw, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import { Button } from '@/shared/ui';
@@ -11,7 +11,7 @@ type AdminUser = {
   created_at: string;
   last_login: string | null;
   is_active: boolean;
-  role: 'admin' | 'member' | string;
+  role: 'admin' | 'supervisor' | 'member' | string;
   can_use_global_provider_account: boolean;
   projectIds: 'all' | string[];
 };
@@ -23,12 +23,14 @@ type AdminProject = {
 };
 
 /**
- * Admin-only panel: manage who can log in and which projects each member can
- * work on. A member only ever sees the projects checked here for them.
+ * User-management panel: manage who can log in and which projects each member
+ * can work on. Admins see everything; a supervisor only sees members and only
+ * the projects they hold themselves (the server enforces the same limits).
  */
 export default function UsersAdminTab() {
   const { user: currentUser } = useAuth();
   const currentUserId = Number(currentUser?.id);
+  const viewerIsAdmin = currentUser?.role === 'admin';
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [projects, setProjects] = useState<AdminProject[]>([]);
@@ -116,8 +118,9 @@ export default function UsersAdminTab() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">Usuários e acessos</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Qualquer pessoa pode se cadastrar, mas só vê os projetos que você liberar aqui.
-            Marque abaixo quais projetos cada pessoa pode acessar.
+            {viewerIsAdmin
+              ? 'Qualquer pessoa pode se cadastrar, mas só vê os projetos que você liberar aqui. Marque abaixo quais projetos cada pessoa pode acessar.'
+              : 'Como supervisor, você pode liberar para os usuários comuns os projetos que você mesmo tem. Os demais acessos ficam com o administrador.'}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()}>
@@ -210,6 +213,11 @@ export default function UsersAdminTab() {
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm">
                   <span className="font-medium text-foreground">{u.username}</span>
+                  {u.role === 'supervisor' && (
+                    <span className="ml-2 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                      supervisor
+                    </span>
+                  )}
                   <span
                     className={
                       u.is_active
@@ -225,6 +233,7 @@ export default function UsersAdminTab() {
                 </div>
                 <div className="flex items-center gap-1">
                   {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {viewerIsAdmin && (<>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -250,6 +259,23 @@ export default function UsersAdminTab() {
                     variant="ghost"
                     size="sm"
                     disabled={isSaving}
+                    onClick={() =>
+                      void runAction(u.id, () =>
+                        api.admin.setUserRole(u.id, u.role === 'supervisor' ? 'member' : 'supervisor'),
+                      )
+                    }
+                    title={
+                      u.role === 'supervisor'
+                        ? 'Tirar de supervisor (volta a usuário comum)'
+                        : 'Tornar supervisor (libera para outros os projetos que ele tem)'
+                    }
+                  >
+                    <Eye className={u.role === 'supervisor' ? 'h-4 w-4 text-sky-600' : 'h-4 w-4'} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isSaving}
                     onClick={() => {
                       if (
                         window.confirm(
@@ -263,9 +289,11 @@ export default function UsersAdminTab() {
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
+                  </>)}
                 </div>
               </div>
 
+              {viewerIsAdmin && (
               <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-border/70 bg-muted/20 px-3 py-2">
                 <input
                   type="checkbox"
@@ -291,6 +319,7 @@ export default function UsersAdminTab() {
                   </span>
                 </span>
               </label>
+              )}
 
               <div className="mt-3 grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {projects.map((p) => (
