@@ -43,13 +43,14 @@ export default function SidebarFooter({
   t,
 }: SidebarFooterProps) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  // Admins and supervisors both handle signups waiting for projects.
+  const canManageUsers = user?.role === 'admin' || user?.role === 'supervisor';
   const [pendingCount, setPendingCount] = useState(0);
 
   // Poll how many members are waiting for a project so the admin sees new
   // signups without opening the Users panel. Admin-only; light polling.
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canManageUsers) {
       setPendingCount(0);
       return;
     }
@@ -72,10 +73,10 @@ export default function SidebarFooter({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [isAdmin]);
+  }, [canManageUsers]);
 
   const pendingBadge = (extraClass = '') =>
-    isAdmin && pendingCount > 0 ? (
+    canManageUsers && pendingCount > 0 ? (
       <span
         className={`ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white ${extraClass}`}
         title={`${pendingCount} pendência(s): cadastro aguardando liberação ou pedido de nova senha`}

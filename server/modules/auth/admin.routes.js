@@ -3,8 +3,9 @@
  *
  * Mounted behind `authenticateToken` + `requireUserManager`, so admins and
  * supervisors reach this router. Admins can do everything. Supervisors only
- * see members and can grant/revoke to them the projects the supervisor was
- * granted; every other route is guarded with `requireAdmin`.
+ * see members: they can grant/revoke to them the projects the supervisor was
+ * granted, enable/disable them and answer their password reset requests;
+ * every other route is guarded with `requireAdmin`.
  */
 
 import path from 'node:path';
@@ -98,7 +99,11 @@ router.get('/users', (req, res) => {
 // Used to badge the settings icon so the admin notices new signups.
 router.get('/pending-count', (req, res) => {
   try {
-    res.json({ pending: userDb.countPendingMembers() + passwordResetsDb.count() });
+    // Signups waiting for projects are always plain members, so they count for
+    // supervisors too; reset requests only count when the caller can answer them.
+    const resets = passwordResetsDb.list()
+      .filter((request) => canManageTarget(req.user, { role: request.role })).length;
+    res.json({ pending: userDb.countPendingMembers() + resets });
   } catch (error) {
     console.error('[admin] pending count error:', error);
     res.status(500).json({ error: 'Failed to count pending users' });
@@ -160,23 +165,34 @@ router.get('/projects', (req, res) => {
 });
 
 // Enable or disable a user account.
-router.post('/users/:id/active', requireAdmin, (req, res) => {
+router.post('/users/:id/active', (req, res) => {
   try {
     const userId = Number(req.params.id);
     const isActive = Boolean(req.body?.isActive);
+    const target = findUser(userId);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    // Supervisors may only switch plain members on/off.
+    if (!canManageTarget(req.user, target)) {
+      return res.status(403).json({ error: 'You cannot manage this user.' });
+    }
 
     if (userId === req.user.id && !isActive) {
       return res.status(400).json({ error: 'You cannot deactivate your own account.' });
     }
     // Never allow disabling the last remaining admin.
-    if (!isActive) {
-      const target = userDb.listUsers().find((u) => u.id === userId);
-      if (target?.role === 'admin' && userDb.countAdmins() <= 1) {
-        return res.status(400).json({ error: 'Cannot deactivate the last admin.' });
-      }
+    if (!isActive && target.role === 'admin' && userDb.countAdmins() <= 1) {
+      return res.status(400).json({ error: 'Cannot deactivate the last admin.' });
     }
 
     userDb.setActive(userId, isActive);
+    activityLogDb.record({
+      userId: req.user.id,
+      username: req.user.username,
+      action: isActive ? 'user.activate' : 'user.deactivate',
+      detail: `${target.username}: ${isActive ? 'ativado' : 'desativado'}`,
+    });
     res.json({ success: true });
   } catch (error) {
     console.error('[admin] set active error:', error);

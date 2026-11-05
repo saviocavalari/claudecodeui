@@ -132,7 +132,7 @@ export default function UsersAdminTab() {
           <p className="mt-1 text-sm text-muted-foreground">
             {viewerIsAdmin
               ? 'Qualquer pessoa pode se cadastrar, mas só vê os projetos que você liberar aqui. Marque abaixo quais projetos cada pessoa pode acessar.'
-              : 'Como supervisor, você pode liberar para os usuários comuns os projetos que você mesmo tem. Os demais acessos ficam com o administrador.'}
+              : 'Como supervisor, você pode liberar para os usuários comuns os projetos que você mesmo tem, ativar ou desativar a conta deles e aprovar pedidos de nova senha. Os demais acessos ficam com o administrador.'}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void load()}>
@@ -296,17 +296,24 @@ export default function UsersAdminTab() {
                 </div>
                 <div className="flex items-center gap-1">
                   {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                  {viewerIsAdmin && (<>
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={isSaving}
-                    onClick={() =>
-                      void runAction(u.id, () => api.admin.setUserActive(u.id, !u.is_active))
-                    }
+                    onClick={() => {
+                      if (
+                        !u.is_active
+                        || window.confirm(
+                          `Desativar "${u.username}"? A pessoa perde o acesso na hora (dá para ativar de novo).`,
+                        )
+                      ) {
+                        void runAction(u.id, () => api.admin.setUserActive(u.id, !u.is_active));
+                      }
+                    }}
                   >
                     {u.is_active ? 'Desativar' : 'Ativar'}
                   </Button>
+                  {viewerIsAdmin && (<>
                   <Button
                     variant="ghost"
                     size="sm"
