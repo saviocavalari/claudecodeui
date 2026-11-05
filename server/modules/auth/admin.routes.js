@@ -12,7 +12,13 @@ import path from 'node:path';
 import spawn from 'cross-spawn';
 import express from 'express';
 
-import { activityLogDb, projectAccessDb, projectsDb, userDb } from '@/modules/database/index.js';
+import {
+  activityLogDb,
+  passwordResetsDb,
+  projectAccessDb,
+  projectsDb,
+  userDb,
+} from '@/modules/database/index.js';
 
 import { isAdmin, requireAdmin } from './project-access.js';
 
@@ -92,7 +98,7 @@ router.get('/users', (req, res) => {
 // Used to badge the settings icon so the admin notices new signups.
 router.get('/pending-count', (req, res) => {
   try {
-    res.json({ pending: userDb.countPendingMembers() });
+    res.json({ pending: userDb.countPendingMembers() + passwordResetsDb.count() });
   } catch (error) {
     console.error('[admin] pending count error:', error);
     res.status(500).json({ error: 'Failed to count pending users' });
@@ -296,6 +302,69 @@ router.delete('/users/:id/projects/:projectId', (req, res) => {
   } catch (error) {
     console.error('[admin] revoke error:', error);
     res.status(500).json({ error: 'Failed to revoke access' });
+  }
+});
+
+// "Forgot my password" requests the caller can act on.
+router.get('/password-resets', (req, res) => {
+  try {
+    const requests = passwordResetsDb.list()
+      .filter((request) => canManageTarget(req.user, { role: request.role }));
+    res.json({ requests });
+  } catch (error) {
+    console.error('[admin] list password resets error:', error);
+    res.status(500).json({ error: 'Failed to list password reset requests' });
+  }
+});
+
+// Approve: the password the person typed on the login screen becomes valid.
+router.post('/password-resets/:id/approve', (req, res) => {
+  try {
+    const request = passwordResetsDb.getById(Number(req.params.id));
+    const target = request ? userDb.listUsers().find((u) => u.id === request.user_id) : null;
+    if (!request || !target) {
+      return res.status(404).json({ error: 'Request not found.' });
+    }
+    if (!canManageTarget(req.user, target)) {
+      return res.status(403).json({ error: 'You cannot manage this user.' });
+    }
+    userDb.updatePassword(target.id, request.password_hash);
+    passwordResetsDb.remove(request.id);
+    activityLogDb.record({
+      userId: req.user.id,
+      username: req.user.username,
+      action: 'password.reset_approved',
+      detail: `nova senha de ${target.username} aprovada`,
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[admin] approve password reset error:', error);
+    res.status(500).json({ error: 'Failed to approve password reset' });
+  }
+});
+
+// Reject: discard the request; the old password keeps working.
+router.delete('/password-resets/:id', (req, res) => {
+  try {
+    const request = passwordResetsDb.getById(Number(req.params.id));
+    const target = request ? userDb.listUsers().find((u) => u.id === request.user_id) : null;
+    if (!request || !target) {
+      return res.status(404).json({ error: 'Request not found.' });
+    }
+    if (!canManageTarget(req.user, target)) {
+      return res.status(403).json({ error: 'You cannot manage this user.' });
+    }
+    passwordResetsDb.remove(request.id);
+    activityLogDb.record({
+      userId: req.user.id,
+      username: req.user.username,
+      action: 'password.reset_rejected',
+      detail: `pedido de nova senha de ${target.username} recusado`,
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[admin] reject password reset error:', error);
+    res.status(500).json({ error: 'Failed to reject password reset' });
   }
 });
 

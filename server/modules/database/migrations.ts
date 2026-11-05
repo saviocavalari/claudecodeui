@@ -6,6 +6,7 @@ import {
   NOTIFICATION_CHANNEL_ENDPOINTS_TABLE_SCHEMA_SQL,
   PROJECTS_TABLE_SCHEMA_SQL,
   ACTIVITY_LOG_TABLE_SCHEMA_SQL,
+  PASSWORD_RESET_REQUESTS_TABLE_SCHEMA_SQL,
   PROVIDER_MODELS_TABLE_SCHEMA_SQL,
   PROVIDER_ACCOUNT_ACCESS_TABLE_SCHEMA_SQL,
   PUSH_SUBSCRIPTIONS_TABLE_SCHEMA_SQL,
@@ -592,6 +593,9 @@ export const runMigrations = (db: Database) => {
     // Audit trail for multi-user installs (who did what, when).
     db.exec(ACTIVITY_LOG_TABLE_SCHEMA_SQL);
     db.exec('CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at)');
+
+    // "Forgot my password" requests waiting for an admin/supervisor approval.
+    db.exec(PASSWORD_RESET_REQUESTS_TABLE_SCHEMA_SQL);
 
     // Promote the original (single) account to admin when upgrading an existing
     // install: if nobody is an admin yet, the earliest-created user becomes one.

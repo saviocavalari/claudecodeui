@@ -164,3 +164,27 @@ test('changePassword rejects a new password shorter than six characters', async 
     (error: unknown) => error instanceof AppError && error.code === 'AUTH_CREDENTIALS_TOO_SHORT',
   );
 });
+
+test('password reset request queues a hash and never changes the password itself', async () => {
+  const queued: Array<[number, string]> = [];
+  let passwordChanged = false;
+  const service = createAuthService(createDependencies({
+    users: {
+      hasUsers: () => true,
+      createUser: () => { throw new Error('unused'); },
+      getUserByUsername: (username) =>
+        username === 'alice' ? { id: 7, username: 'alice', password_hash: 'old' } : undefined,
+      getUserWithPasswordById: () => undefined,
+      updatePassword: () => { passwordChanged = true; },
+      updateLastLogin: () => undefined,
+    },
+    passwordResets: { upsert: (userId, hash) => queued.push([userId, hash]) },
+  }));
+
+  assert.deepEqual(await service.requestPasswordReset('alice', 'nova123'), { success: true });
+  // Unknown usernames get the same answer, so accounts cannot be enumerated.
+  assert.deepEqual(await service.requestPasswordReset('ghost', 'nova123'), { success: true });
+  assert.deepEqual(queued, [[7, 'hashed-password']]);
+  assert.equal(passwordChanged, false);
+  await assert.rejects(() => service.requestPasswordReset('alice', '123'), AppError);
+});

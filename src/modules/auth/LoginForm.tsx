@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Lock, User } from 'lucide-react';
 
+import { api } from '@/shared/api';
 import { useAuth } from '@/modules/auth/context/AuthContext';
 import AuthErrorAlert from '@/modules/auth/AuthErrorAlert';
 import AuthInputField from '@/modules/auth/AuthInputField';
@@ -11,11 +12,13 @@ import AuthScreenLayout from '@/modules/auth/AuthScreenLayout';
 type LoginFormState = {
   username: string;
   password: string;
+  confirmPassword: string;
 };
 
 const initialState: LoginFormState = {
   username: '',
   password: '',
+  confirmPassword: '',
 };
 
 /**
@@ -28,11 +31,20 @@ export default function LoginForm() {
   const { t } = useTranslation('auth');
   const { error: sessionError, login, register } = useAuth();
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
   const [formState, setFormState] = useState<LoginFormState>(initialState);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isRegister = mode === 'register';
+  const isReset = mode === 'reset';
+
+  const switchMode = useCallback((next: 'login' | 'register' | 'reset') => {
+    setMode(next);
+    setErrorMessage('');
+    setSuccessMessage('');
+    setFormState((previous) => ({ ...previous, password: '', confirmPassword: '' }));
+  }, []);
 
   const updateField = useCallback((field: keyof LoginFormState, value: string) => {
     setFormState((previous) => ({ ...previous, [field]: value }));
@@ -42,6 +54,7 @@ export default function LoginForm() {
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       setErrorMessage('');
+      setSuccessMessage('');
 
       // Keep form validation local so each auth screen owns its own UI feedback.
       if (!formState.username.trim() || !formState.password) {
@@ -49,8 +62,36 @@ export default function LoginForm() {
         return;
       }
 
-      if (isRegister && formState.password.length < 6) {
+      if ((isRegister || isReset) && formState.password.length < 6) {
         setErrorMessage('A senha precisa ter pelo menos 6 caracteres.');
+        return;
+      }
+
+      if (isReset) {
+        if (formState.password !== formState.confirmPassword) {
+          setErrorMessage('As duas senhas não são iguais.');
+          return;
+        }
+        setIsSubmitting(true);
+        try {
+          const res = await api.auth.requestPasswordReset(
+            formState.username.trim(),
+            formState.password,
+          );
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            setErrorMessage(body.error || 'Não foi possível enviar o pedido.');
+          } else {
+            setFormState(initialState);
+            setMode('login');
+            setSuccessMessage(
+              'Pedido enviado. Avise o administrador ou seu supervisor: depois que ele aprovar, entre com a nova senha.',
+            );
+          }
+        } catch {
+          setErrorMessage('Não foi possível enviar o pedido.');
+        }
+        setIsSubmitting(false);
         return;
       }
 
@@ -63,16 +104,18 @@ export default function LoginForm() {
       }
       setIsSubmitting(false);
     },
-    [formState.password, formState.username, isRegister, login, register, t],
+    [formState.confirmPassword, formState.password, formState.username, isRegister, isReset, login, register, t],
   );
 
   return (
     <AuthScreenLayout
-      title={isRegister ? 'Criar conta' : t('login.title')}
+      title={isRegister ? 'Criar conta' : isReset ? 'Esqueci minha senha' : t('login.title')}
       description={
         isRegister
           ? 'Crie sua conta. O administrador libera os projetos que você poderá acessar.'
-          : t('login.description')
+          : isReset
+            ? 'Escolha uma nova senha. Ela passa a valer depois que o administrador ou seu supervisor aprovar o pedido.'
+            : t('login.description')
       }
       footerText={t('login.footerText')}
     >
@@ -90,15 +133,35 @@ export default function LoginForm() {
 
         <AuthInputField
           id="password"
-          label={t('login.password')}
+          label={isReset ? 'Nova senha' : t('login.password')}
           value={formState.password}
           onChange={(value) => updateField('password', value)}
           placeholder={t('login.placeholders.password')}
           isDisabled={isSubmitting}
           type="password"
-          autoComplete={isRegister ? 'new-password' : 'current-password'}
+          autoComplete={isRegister || isReset ? 'new-password' : 'current-password'}
           icon={Lock}
         />
+
+        {isReset && (
+          <AuthInputField
+            id="confirmPassword"
+            label="Repita a nova senha"
+            value={formState.confirmPassword}
+            onChange={(value) => updateField('confirmPassword', value)}
+            placeholder="Digite a nova senha de novo"
+            isDisabled={isSubmitting}
+            type="password"
+            autoComplete="new-password"
+            icon={Lock}
+          />
+        )}
+
+        {successMessage && (
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            {successMessage}
+          </div>
+        )}
 
         <AuthErrorAlert errorMessage={errorMessage || sessionError || ''} />
 
@@ -110,36 +173,39 @@ export default function LoginForm() {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {isRegister ? 'Criando conta...' : t('login.loading')}
+              {isRegister ? 'Criando conta...' : isReset ? 'Enviando pedido...' : t('login.loading')}
             </>
           ) : (
-            isRegister ? 'Criar conta' : t('login.submit')
+            isRegister ? 'Criar conta' : isReset ? 'Pedir nova senha' : t('login.submit')
           )}
         </button>
 
         <div className="pt-1 text-center text-sm text-muted-foreground">
-          {isRegister ? (
+          {isRegister || isReset ? (
             <button
               type="button"
               className="font-medium text-primary hover:underline"
-              onClick={() => {
-                setMode('login');
-                setErrorMessage('');
-              }}
+              onClick={() => switchMode('login')}
             >
-              Já tem conta? Entrar
+              {isReset ? 'Voltar para o login' : 'Já tem conta? Entrar'}
             </button>
           ) : (
-            <button
-              type="button"
-              className="font-medium text-primary hover:underline"
-              onClick={() => {
-                setMode('register');
-                setErrorMessage('');
-              }}
-            >
-              Não tem conta? Criar conta
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                className="font-medium text-primary hover:underline"
+                onClick={() => switchMode('register')}
+              >
+                Não tem conta? Criar conta
+              </button>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                onClick={() => switchMode('reset')}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
           )}
         </div>
       </form>

@@ -28,6 +28,9 @@ type AuthDependencies = {
     updatePassword(userId: number, passwordHash: string): void;
     updateLastLogin(userId: number): void;
   };
+  passwordResets?: {
+    upsert(userId: number, passwordHash: string): void;
+  };
   transaction: {
     begin(): void;
     commit(): void;
@@ -163,6 +166,44 @@ export function createAuthService(dependencies: AuthDependencies) {
         },
         token: dependencies.generateToken({ ...user, role: toUserRole(user.role) }),
       };
+    },
+
+    /**
+     * "Forgot my password": stores the new password (hashed) as a pending
+     * request. Nothing changes until an admin or supervisor approves it. The
+     * answer is the same whether or not the username exists, so this cannot
+     * be used to discover which accounts are registered.
+     */
+    async requestPasswordReset(usernameInput: unknown, newPasswordInput: unknown) {
+      const username = typeof usernameInput === 'string' ? usernameInput.trim() : '';
+      const newPassword = typeof newPasswordInput === 'string' ? newPasswordInput : '';
+
+      if (!username || !newPassword) {
+        throw new AppError('Username and new password are required', {
+          code: 'AUTH_CREDENTIALS_REQUIRED',
+          statusCode: 400,
+        });
+      }
+      if (newPassword.length < 6) {
+        throw new AppError('New password must be at least 6 characters', {
+          code: 'AUTH_CREDENTIALS_TOO_SHORT',
+          statusCode: 400,
+        });
+      }
+
+      const user = dependencies.users.getUserByUsername(username);
+      if (user && dependencies.passwordResets) {
+        const userId = numericUserId(user.id);
+        dependencies.passwordResets.upsert(userId, await dependencies.hashPassword(newPassword));
+        dependencies.recordActivity?.({
+          userId,
+          username: user.username,
+          action: 'password.reset_request',
+          detail: 'pediu nova senha na tela de login',
+        });
+      }
+
+      return { success: true };
     },
 
     /**

@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 
-import { activityLogDb, getConnection, userDb } from '@/modules/database/index.js';
+import { activityLogDb, getConnection, passwordResetsDb, userDb } from '@/modules/database/index.js';
 
 import { authenticateToken, generateToken } from './auth.middleware.js';
 import { createAuthRouter } from './auth.routes.js';
@@ -25,6 +25,9 @@ const authService = createAuthService({
     getUserWithPasswordById: (userId) => userDb.getUserWithPasswordById(userId),
     updatePassword: (userId, passwordHash) => userDb.updatePassword(userId, passwordHash),
     updateLastLogin: (userId) => userDb.updateLastLogin(userId),
+  },
+  passwordResets: {
+    upsert: (userId, passwordHash) => passwordResetsDb.upsert(userId, passwordHash),
   },
   transaction: {
     begin: () => databaseConnection.prepare('BEGIN').run(),

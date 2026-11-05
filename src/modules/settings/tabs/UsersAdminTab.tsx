@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, Loader2, RefreshCw, ShieldCheck, Trash2, UserCog } from 'lucide-react';
+import { Check, Eye, KeyRound, Loader2, RefreshCw, ShieldCheck, Trash2, UserCog, X } from 'lucide-react';
 
 import { api } from '@/shared/api';
 import { Button } from '@/shared/ui';
@@ -14,6 +14,13 @@ type AdminUser = {
   role: 'admin' | 'supervisor' | 'member' | string;
   can_use_global_provider_account: boolean;
   projectIds: 'all' | string[];
+};
+
+type PasswordResetRequest = {
+  id: number;
+  user_id: number;
+  username: string;
+  created_at: string;
 };
 
 type AdminProject = {
@@ -34,6 +41,7 @@ export default function UsersAdminTab() {
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [projects, setProjects] = useState<AdminProject[]>([]);
+  const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
@@ -42,9 +50,10 @@ export default function UsersAdminTab() {
     setIsLoading(true);
     setError(null);
     try {
-      const [usersRes, projectsRes] = await Promise.all([
+      const [usersRes, projectsRes, resetsRes] = await Promise.all([
         api.admin.users(),
         api.admin.projects(),
+        api.admin.passwordResets(),
       ]);
       if (!usersRes.ok || !projectsRes.ok) {
         throw new Error('Falha ao carregar dados de administração.');
@@ -53,6 +62,9 @@ export default function UsersAdminTab() {
       const projectsData = await projectsRes.json();
       setUsers(usersData.users ?? []);
       setProjects(projectsData.projects ?? []);
+      // Older server builds lack this route; the panel still works without it.
+      const resetsData = resetsRes.ok ? await resetsRes.json() : { requests: [] };
+      setResetRequests(resetsData.requests ?? []);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Erro inesperado.');
     } finally {
@@ -133,6 +145,57 @@ export default function UsersAdminTab() {
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
+      )}
+
+      {resetRequests.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <KeyRound className="h-4 w-4" /> Pedidos de nova senha ({resetRequests.length})
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            A pessoa escolheu a nova senha na tela de login. Confirme com ela que o pedido é
+            dela antes de aprovar; ao aprovar, a senha antiga deixa de valer.
+          </p>
+          <div className="space-y-2">
+            {resetRequests.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2"
+              >
+                <div className="text-sm">
+                  <span className="font-medium text-foreground">{r.username}</span>
+                  <div className="text-xs text-muted-foreground">
+                    pedido em {new Date(`${r.created_at.replace(' ', 'T')}Z`).toLocaleString('pt-BR')}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={savingUserId === r.user_id}
+                    onClick={() =>
+                      void runAction(r.user_id, () => api.admin.approvePasswordReset(r.id))
+                    }
+                  >
+                    <Check className="h-4 w-4" />
+                    Aprovar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={savingUserId === r.user_id}
+                    onClick={() =>
+                      void runAction(r.user_id, () => api.admin.rejectPasswordReset(r.id))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                    Recusar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {admins.length > 0 && (

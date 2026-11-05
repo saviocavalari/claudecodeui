@@ -41,6 +41,17 @@ export function createAuthRouter(
     }
   });
 
+  // "Forgot my password" from the login screen (public). Only queues a request;
+  // an admin or supervisor has to approve it in Settings > Usuários.
+  router.post('/password-reset-request', async (req, res, next) => {
+    try {
+      const body = req.body as { username?: unknown; newPassword?: unknown };
+      res.json(await service.requestPasswordReset(body.username, body.newPassword));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Self-service password change. The account is taken from the token, so this
   // route can only ever change the caller's own password.
   router.post('/change-password', authenticateToken, async (req, res, next) => {

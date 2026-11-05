@@ -153,6 +153,22 @@ CREATE TABLE IF NOT EXISTS activity_log (
 );
 `;
 
+/**
+ * "Forgot my password" requests. Whoever cannot log in types the username and
+ * the new password on the login screen; nothing changes until an admin (or the
+ * member's supervisor) approves it. Only the bcrypt hash is stored, and at most
+ * one pending request per user (a new one replaces the old).
+ */
+export const PASSWORD_RESET_REQUESTS_TABLE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+`;
+
 export const SCHEDULED_MESSAGES_TABLE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS scheduled_messages (
     id TEXT PRIMARY KEY,
@@ -357,6 +373,7 @@ CREATE INDEX IF NOT EXISTS idx_user_projects_user ON user_projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_projects_project ON user_projects(project_id);
 
 ${ACTIVITY_LOG_TABLE_SCHEMA_SQL}
+${PASSWORD_RESET_REQUESTS_TABLE_SCHEMA_SQL}
 CREATE INDEX IF NOT EXISTS idx_activity_log_created ON activity_log(created_at);
 
 ${SESSIONS_TABLE_SCHEMA_SQL}

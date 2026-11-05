@@ -13,6 +13,8 @@ export { providerAccountAccessDb } from '@/modules/database/repositories/provide
 export { projectsDb } from '@/modules/database/repositories/projects.db.js';
 export { projectAccessDb } from '@/modules/database/repositories/project-access.db.js';
 export { activityLogDb } from '@/modules/database/repositories/activity-log.db.js';
+// passwordResetsDb: used by Auth (login screen request) and the admin panel (approval).
+export { passwordResetsDb } from '@/modules/database/repositories/password-resets.db.js';
 export { userIdCanAccessProjectPath } from '@/modules/database/access-check.js';
 export { pushSubscriptionsDb } from '@/modules/database/repositories/push-subscriptions.js';
 export { scanStateDb } from '@/modules/database/repositories/scan-state.db.js';

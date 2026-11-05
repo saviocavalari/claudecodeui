@@ -166,6 +166,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     }),
+    requestPasswordReset: (username: string, newPassword: string) =>
+      fetch('/api/auth/password-reset-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, newPassword }),
+      }),
     register: (username: string, password: string) => fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -183,6 +189,10 @@ export const api = {
     users: () => get('/api/admin/users'),
     projects: () => get('/api/admin/projects'),
     pendingCount: () => get('/api/admin/pending-count'),
+    passwordResets: () => get('/api/admin/password-resets'),
+    approvePasswordReset: (requestId: number) =>
+      post(`/api/admin/password-resets/${requestId}/approve`),
+    rejectPasswordReset: (requestId: number) => del(`/api/admin/password-resets/${requestId}`),
     activity: (limit = 100) => get(`/api/admin/activity${query({ limit })}`),
     restart: () => post('/api/admin/restart'),
     setUserActive: (userId: string | number, isActive: boolean) =>

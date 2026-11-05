@@ -78,7 +78,7 @@ export default function SidebarFooter({
     isAdmin && pendingCount > 0 ? (
       <span
         className={`ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white ${extraClass}`}
-        title={`${pendingCount} usuário(s) aguardando liberação`}
+        title={`${pendingCount} pendência(s): cadastro aguardando liberação ou pedido de nova senha`}
       >
         {pendingCount}
       </span>
