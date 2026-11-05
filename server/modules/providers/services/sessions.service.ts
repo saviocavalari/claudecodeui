@@ -300,6 +300,7 @@ export const sessionsService = {
   async forkSessionById(
     sessionId: string,
     options: { upToAnchorId?: string; title?: string } = {},
+    createdBy?: { userId?: number | string | null; username?: string | null },
   ): Promise<CreateAppSessionResult> {
     const source = sessionsDb.getSessionById(sessionId);
     if (!source) {
@@ -351,6 +352,7 @@ export const sessionsService = {
       // differently from the conversation it was branched from.
       model: source.model,
       effort: source.effort,
+      createdBy,
     });
 
     await broadcastSessionUpserted(forkSessionId);

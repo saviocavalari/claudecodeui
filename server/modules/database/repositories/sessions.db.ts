@@ -225,9 +225,12 @@ export const sessionsDb = {
     forkedFromSessionId: string;
     model: string | null;
     effort: string | null;
+    createdBy?: { userId?: number | string | null; username?: string | null };
   }): string {
     const db = getConnection();
     const normalizedProjectPath = normalizeProjectPathForProvider(input.provider, input.projectPath);
+    const createdByUserId = Number.isFinite(Number(input.createdBy?.userId)) ? Number(input.createdBy?.userId) : null;
+    const createdByUsername = input.createdBy?.username ?? null;
 
     projectsDb.createProjectPath(normalizedProjectPath);
 
@@ -238,8 +241,8 @@ export const sessionsDb = {
       db.prepare('DELETE FROM sessions WHERE session_id = ? AND session_id <> ?')
         .run(input.providerSessionId, input.sessionId);
       db.prepare(
-        `INSERT INTO sessions (session_id, provider, provider_session_id, custom_name, project_path, jsonl_path, model, effort, forked_from_session_id, isArchived, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        `INSERT INTO sessions (session_id, provider, provider_session_id, custom_name, project_path, jsonl_path, model, effort, forked_from_session_id, isArchived, created_at, updated_at, created_by_user_id, created_by_username)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)`
       ).run(
         input.sessionId,
         input.provider,
@@ -250,6 +253,8 @@ export const sessionsDb = {
         input.model,
         input.effort,
         input.forkedFromSessionId,
+        createdByUserId,
+        createdByUsername,
       );
     })();
 

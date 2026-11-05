@@ -115,6 +115,18 @@ test('a fork inherits the model and effort of the conversation it branched from'
   });
 });
 
+test('a fork belongs to the login that made it, so it lands in that member\'s "Minhas conversas"', async () => {
+  await withForkableClaude(async ({ directory }) => {
+    seedSource(directory);
+
+    const result = await sessionsService.forkSessionById(SOURCE_ID, {}, { userId: 1, username: 'savio' });
+
+    const forked = sessionsDb.getSessionById(result.sessionId);
+    assert.equal(forked?.created_by_user_id, 1);
+    assert.equal(forked?.created_by_username, 'savio');
+  });
+});
+
 test('forking replaces a row the watcher already made for the new transcript', async () => {
   await withForkableClaude(async ({ directory }) => {
     seedSource(directory);

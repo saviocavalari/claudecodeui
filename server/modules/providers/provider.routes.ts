@@ -1061,7 +1061,12 @@ router.post(
   '/sessions/:sessionId/fork',
   asyncHandler(async (req: Request, res: Response) => {
     const sessionId = parseSessionId(req.params.sessionId);
-    const result = await sessionsService.forkSessionById(sessionId, parseSessionForkPayload(req.body));
+    // A fork belongs to whoever made it, so it shows up under that login's "Minhas conversas".
+    const user = (req as Request & { user?: { id?: number | string; username?: string } }).user;
+    const result = await sessionsService.forkSessionById(sessionId, parseSessionForkPayload(req.body), {
+      userId: user?.id,
+      username: typeof user?.username === 'string' ? user.username : null,
+    });
     res.status(201).json(createApiSuccessResponse(result));
   }),
 );
