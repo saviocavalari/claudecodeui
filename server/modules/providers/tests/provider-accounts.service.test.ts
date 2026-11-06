@@ -34,6 +34,7 @@ test('provider accounts keep isolated homes and rotate to the next authenticated
     const profileHome = env.CLAUDE_CONFIG_DIR || env.CODEX_HOME || '';
     return {
       installed: true,
+      installedVersion: null,
       provider,
       authenticated: Boolean(profileHome),
       email: profileHome ? `${path.basename(profileHome)}@example.test` : null,
@@ -96,6 +97,7 @@ test('automatic rotation can be disabled per provider', async () => {
     },
     authStatusResolver: async (provider) => ({
       installed: true,
+      installedVersion: null,
       provider,
       authenticated: true,
       email: 'account@example.test',
@@ -129,6 +131,7 @@ test('users without permission cannot see, activate, log into, or execute the gl
     },
     authStatusResolver: async (provider, env) => ({
       installed: true,
+      installedVersion: null,
       provider,
       authenticated: Object.keys(env).length === 0,
       email: Object.keys(env).length === 0 ? 'global@example.test' : null,
@@ -189,6 +192,7 @@ test('users with permission retain the global provider account', async () => {
     },
     authStatusResolver: async (provider) => ({
       installed: true,
+      installedVersion: null,
       provider,
       authenticated: true,
       email: 'global@example.test',
@@ -222,6 +226,7 @@ test('a long-lived token feeds only the primary Claude account', async () => {
     },
     authStatusResolver: async (provider) => ({
       installed: true,
+      installedVersion: null,
       provider,
       authenticated: true,
       email: 'global@example.test',
