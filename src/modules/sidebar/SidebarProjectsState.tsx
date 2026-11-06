@@ -1,7 +1,7 @@
 import { Folder, Search, Clock } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { LoadingProgress } from '@/shared/types';
-import { useAuth } from '@/modules/auth';
+import { useCurrentUser } from '@/modules/auth';
 
 type SidebarProjectsStateProps = {
   isLoading: boolean;
@@ -19,7 +19,7 @@ export default function SidebarProjectsState({
   filteredProjectsCount,
   t,
 }: SidebarProjectsStateProps) {
-  const { user } = useAuth();
+  const user = useCurrentUser();
   const isMember = Boolean(user) && user?.role !== 'admin';
 
   if (isLoading) {

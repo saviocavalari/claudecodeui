@@ -2,8 +2,6 @@
   "projects": {
     "title": "Projetos",
     "newProject": "Novo projeto",
-    "projectActions": "Opções do projeto",
-    "projectActionsFor": "Opções do projeto {{project}}",
     "deleteProject": "Remover projeto",
     "renameProject": "Renomear projeto",
     "noProjects": "Nenhum projeto encontrado",
@@ -20,6 +18,8 @@
     "noMatchingProjects": "Nenhum projeto correspondente",
     "tryDifferentSearch": "Tente ajustar o termo de busca",
     "runClaudeCli": "Execute o Claude CLI em um diretório de projeto para começar",
+    "projectActions": "Opções do projeto",
+    "projectActionsFor": "Opções do projeto {{project}}",
     "chooseEmoji": "Escolher emoji para",
     "removeEmoji": "Remover emoji",
     "emojiCustomPlaceholder": "Ou cole qualquer emoji aqui...",
@@ -41,7 +41,14 @@
     "loadingSessions": "Carregando sessões...",
     "unnamed": "Sem nome",
     "loading": "Carregando...",
-    "showMore": "Mostrar mais sessões"
+    "showMore": "Mostrar mais sessões",
+    "select": "Selecionar",
+    "selectAll": "Selecionar tudo",
+    "selectAllLoaded": "Selecionar tudo carregado",
+    "clearSelection": "Limpar",
+    "deleteSelected_one": "Excluir {{count}} sessão",
+    "deleteSelected_other": "Excluir {{count}} sessões",
+    "deleteSelected_many": "Excluir {{count}} de sessões"
   },
   "tooltips": {
     "viewEnvironments": "Ver ambientes",
@@ -60,6 +67,7 @@
     "clearSearch": "Limpar busca",
     "openCommandPalette": "Abrir paleta de comandos",
     "attentionRequiredIndicator": "A sessão precisa de atenção",
+    "backgroundWorkIndicator": "Trabalho em segundo plano rodando",
     "setEmoji": "Escolher emoji do projeto",
     "setFolder": "Mover projeto para pasta"
   },
@@ -124,7 +132,11 @@
     "restoreProjectFailed": "Falha ao restaurar o projeto. Tente novamente.",
     "restoreProjectError": "Erro ao restaurar o projeto. Tente novamente.",
     "restoreSessionFailed": "Falha ao restaurar a sessão. Tente novamente.",
-    "restoreSessionError": "Erro ao restaurar a sessão. Tente novamente."
+    "restoreSessionError": "Erro ao restaurar a sessão. Tente novamente.",
+    "forkSessionError": "Não foi possível fazer fork desta sessão. Tente novamente.",
+    "deleteSessionsPartialFailure_one": "{{count}} sessão de {{total}} não pôde ser excluída. Tente novamente.",
+    "deleteSessionsPartialFailure_other": "{{count}} de {{total}} sessões não puderam ser excluídas. Tente novamente.",
+    "deleteSessionsPartialFailure_many": "{{count}} de {{total}} sessões não puderam ser excluídas. Tente novamente."
   },
   "version": {
     "updateAvailable": "Atualização disponível",
@@ -133,17 +145,30 @@
   "search": {
     "modeProjects": "Projetos",
     "modeConversations": "Conversas",
+    "modeMore": "Mais",
     "conversationsPlaceholder": "Buscar nas conversas...",
     "searching": "Buscando...",
+    "sessionTitles": "Sessão",
+    "conversationContents": "Conteúdo da conversa",
     "noResults": "Nenhum resultado encontrado",
     "tryDifferentQuery": "Tente uma busca diferente",
     "matches_one": "{{count}} correspondência",
     "matches_other": "{{count}} correspondências",
+    "matches_many": "{{count}} de correspondências",
     "projectsScanned_one": "{{count}} projeto verificado",
     "projectsScanned_other": "{{count}} projetos verificados",
+    "projectsScanned_many": "{{count}} de projetos verificados",
     "scopeMine": "Minhas conversas",
     "scopeAll": "Todas",
     "scopeLabel": "Quais conversas mostrar"
+  },
+  "recent": {
+    "title": "Conversas recentes",
+    "emptyTitle": "Nenhuma conversa ainda",
+    "emptyDescription": "Suas conversas atualizadas mais recentemente aparecerão aqui.",
+    "loadFailed": "Não foi possível carregar conversas recentes",
+    "loadMore": "Carregar conversas mais antigas",
+    "loadingMore": "Carregando mais..."
   },
   "deleteConfirmation": {
     "deleteProject": "Remover projeto",
@@ -151,9 +176,28 @@
     "confirmDelete": "O que você gostaria de fazer com",
     "sessionCount_one": "Este projeto contém {{count}} conversa.",
     "sessionCount_other": "Este projeto contém {{count}} conversas.",
+    "sessionCount_many": "Este projeto contém {{count}} de conversas.",
     "removeFromSidebar": "Remover apenas da barra lateral",
+    "archiveProject": "Arquivar projeto",
+    "archiveSession": "Arquivar sessão",
+    "archiveSessionNotice": "Arquivar mantém a sessão fora da lista ativa preservando seu histórico.",
+    "archivedSessionNotice": "Esta sessão já está arquivada. Você pode mantê-la oculta ou excluí-la permanentemente.",
+    "deleteSessionPermanently": "Excluir permanentemente",
     "deleteAllData": "Excluir todos os dados permanentemente",
     "allConversationsDeleted": "O projeto será removido da barra lateral. Seus arquivos, memórias e dados das sessões serão preservados.",
-    "cannotUndo": "Você pode adicionar o projeto novamente depois."
+    "cannotUndo": "Você pode adicionar o projeto novamente depois.",
+    "confirmDeleteSessions": "O que você gostaria de fazer com",
+    "deleteSessions_one": "Excluir {{count}} sessão",
+    "deleteSessions_other": "Excluir {{count}} sessões",
+    "deleteSessions_many": "Excluir {{count}} de sessões",
+    "selectedSessions_one": "{{count}} sessão selecionada",
+    "selectedSessions_other": "{{count}} sessões selecionadas",
+    "selectedSessions_many": "{{count}} de sessões selecionadas",
+    "archiveSessions_one": "Arquivar {{count}} sessão",
+    "archiveSessions_other": "Arquivar {{count}} sessões",
+    "archiveSessions_many": "Arquivar {{count}} de sessões",
+    "archiveSessionsNotice_one": "Arquivar mantém a sessão fora da lista ativa preservando seu histórico.",
+    "archiveSessionsNotice_other": "Arquivar mantém as sessões fora da lista ativa preservando seu histórico.",
+    "archiveSessionsNotice_many": "Arquivar mantém as sessões fora da lista ativa preservando seu histórico."
   }
 }

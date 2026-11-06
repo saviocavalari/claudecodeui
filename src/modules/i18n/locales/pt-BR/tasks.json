@@ -133,10 +133,26 @@
   "priorities": {
     "high": "Alta",
     "medium": "Média",
-    "low": "Baixa"
+    "low": "Baixa",
+    "highTitle": "Prioridade alta",
+    "mediumTitle": "Prioridade média",
+    "lowTitle": "Prioridade baixa"
   },
   "noMatchingTasks": {
     "title": "Nenhuma tarefa corresponde aos seus filtros",
     "description": "Tente ajustar sua busca ou os critérios de filtro."
+  },
+  "banner": {
+    "initialize": "Inicializar",
+    "hideDetails": "Ocultar detalhes",
+    "whatIsTaskmaster": "O que é o TaskMaster?",
+    "detailAiPowered": "- Gerenciamento de tarefas com IA, com dependências e subtarefas.",
+    "detailPrdDriven": "- Geração de tarefas orientada por PRD para inicialização mais rápida do projeto.",
+    "detailKanbanList": "- Visualizações Kanban e lista para execução diária.",
+    "startTask": "Iniciar tarefa",
+    "viewTaskDetails": "Ver detalhes da tarefa",
+    "viewAllTasks": "Ver todas as tarefas",
+    "allComplete": "Todas as tarefas concluídas",
+    "noPending": "Nenhuma tarefa pendente"
   }
 }

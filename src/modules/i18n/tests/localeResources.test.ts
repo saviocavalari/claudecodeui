@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { test } from 'vitest';
 
-import i18n from '@/modules/i18n/config';
+import i18n, { defaultLanguageFor } from '@/modules/i18n/config';
 import { languages } from '@/modules/i18n/languages';
 
 type Messages = { [key: string]: string | Messages };
@@ -36,7 +36,10 @@ test('every language offered in the selector has bundled translations', () => {
 });
 
 test('pt-BR is the language shown before the user picks one', () => {
-  assert.equal(i18n.language, 'pt-BR');
+  assert.equal(defaultLanguageFor('production'), 'pt-BR');
+  assert.equal(defaultLanguageFor('development'), 'pt-BR');
+  // Only the test run keeps English, because the suite asserts English copy.
+  assert.equal(defaultLanguageFor('test'), 'en');
 });
 
 test('pt-BR translations keep the placeholders of the English text', () => {

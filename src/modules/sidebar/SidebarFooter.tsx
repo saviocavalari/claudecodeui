@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 
 import { IS_PLATFORM } from '@/shared/utils';
 import { api } from '@/shared/api';
-import { useAuth } from '@/modules/auth';
+import { useCurrentUser } from '@/modules/auth';
 import type { ReleaseInfo } from '@/shared/types';
 
 const GITHUB_ISSUES_URL = 'https://github.com/siteboon/claudecodeui/issues/new';
@@ -42,7 +42,7 @@ export default function SidebarFooter({
   onShowSettings,
   t,
 }: SidebarFooterProps) {
-  const { user } = useAuth();
+  const user = useCurrentUser();
   // Admins and supervisors both handle signups waiting for projects.
   const canManageUsers = user?.role === 'admin' || user?.role === 'supervisor';
   const [pendingCount, setPendingCount] = useState(0);

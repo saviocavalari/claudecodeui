@@ -59,6 +59,7 @@ function renderConnection() {
       initialCommandRef: ref<string | null | undefined>(null),
       isPlainShellRef: ref(false),
       bypassPermissionsRef: ref(false),
+      isDarkModeRef: ref(true),
       onProcessCompleteRef: ref<((exitCode: number) => void) | null | undefined>(null),
       isInitialized: true,
       autoConnect: false,
@@ -121,7 +122,8 @@ describe('shell socket error frames', () => {
       socket.onmessage?.({ data: JSON.stringify({ type: 'error' }) });
     });
 
-    expect(write.mock.calls[0][0]).toContain('Shell error');
+    // Fork: the fallback label is shown in Portuguese to the team.
+    expect(write.mock.calls[0][0]).toContain('Não foi possível iniciar o terminal.');
   });
 
   it('still writes plain output frames unchanged', () => {

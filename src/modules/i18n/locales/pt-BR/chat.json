@@ -52,6 +52,34 @@
     "viewFullOutput": "Ver saída completa ({{count}} caracteres)",
     "contentDisplayed": "O conteúdo do arquivo é exibido na visualização de diferenças acima"
   },
+  "bashEditDiff": {
+    "created": "Criado",
+    "updated": "Atualizado",
+    "deleted": "Excluído",
+    "emptyFile": "Arquivo vazio",
+    "moreLines_one": "… {{count}} linha adicional",
+    "moreLines_other": "… {{count}} linhas adicionais",
+    "moreLines_many": "… {{count}} de linhas adicionais",
+    "moreFiles_one": "… {{count}} arquivo alterado",
+    "moreFiles_other": "… {{count}} arquivos alterados",
+    "moreFiles_many": "… {{count}} de arquivos alterados",
+    "filesNotShown_one": "{{count}} arquivo alterado (binário, apenas modo ou grande demais para exibir)",
+    "filesNotShown_other": "{{count}} arquivos alterados (binário, apenas modo ou grande demais para exibir)",
+    "filesNotShown_many": "{{count}} de arquivos alterados (binário, apenas modo ou grande demais para exibir)",
+    "filesUnavailable_one": "{{count}} arquivo alterado (diff indisponível)",
+    "filesUnavailable_other": "{{count}} arquivos alterados (diff indisponível)",
+    "filesUnavailable_many": "{{count}} de arquivos alterados (diff indisponível)",
+    "filesChanged_one": "{{count}} arquivo alterado",
+    "filesChanged_other": "{{count}} arquivos alterados",
+    "filesChanged_many": "{{count}} de arquivos alterados",
+    "morePaths_one": "+{{count}} mais",
+    "morePaths_other": "+{{count}} mais",
+    "morePaths_many": "+{{count}} mais",
+    "diffUnavailable": "(diff do arquivo indisponível para este comando)",
+    "partUnavailable": "(parte do diff está indisponível)",
+    "skipped": "(diff do arquivo ignorado para este comando git)",
+    "shared": "(outro comando rodou neste repositório ao mesmo tempo; uma alteração feita por qualquer um pode aparecer sob qualquer resultado)"
+  },
   "interactive": {
     "title": "Prompt interativo",
     "waiting": "Aguardando sua resposta no CLI",
@@ -138,6 +166,21 @@
       "delete": "Excluir mensagem enfileirada"
     }
   },
+  "composer": {
+    "reasoning": "Raciocínio",
+    "model": "Modelo",
+    "effortDefault": "Padrão",
+    "loadingModels": "Carregando modelos…",
+    "modelMenu": "Selecionar modelo e nível de raciocínio",
+    "permissionHeading": "Como aprovar as ações do {{provider}}?",
+    "editing": {
+      "title": "Substituindo uma mensagem anterior",
+      "filesNotReverted": "arquivos que o agente já alterou não são revertidos",
+      "cancel": "Cancelar"
+    },
+    "contextUsed": "{{percentage}}% do contexto usado ({{used}} de {{total}} tokens). Clique para resumir a conversa e liberar espaço.",
+    "compacting": "Resumindo…"
+  },
   "providerSelection": {
     "title": "Escolha seu assistente de IA",
     "description": "Selecione um provedor para iniciar uma nova conversa",
@@ -155,7 +198,15 @@
       "opencode": "Pronto para usar o OpenCode com {{model}}. Comece a digitar sua mensagem abaixo.",
       "default": "Selecione um provedor acima para começar"
     },
-    "pressToSearch": "Pressione <kbd>{{shortcut}}</kbd> para buscar sessões, arquivos e commits"
+    "pressToSearch": "Pressione <kbd>{{shortcut}}</kbd> para buscar sessões, arquivos e commits",
+    "chooseModel": "Escolher um modelo",
+    "chooseModelDescription": "Modelos integrados e personalizados em uma lista",
+    "addModel": "Adicionar modelo",
+    "searchModels": "Pesquisar modelos...",
+    "manageModels": "Gerenciar modelos",
+    "noModelsFound": "Nenhum modelo encontrado.",
+    "loadingModels": "Carregando modelos…",
+    "clickToChange": "Clique para alterar modelo"
   },
   "session": {
     "continue": {
@@ -185,7 +236,8 @@
     "status": {
       "newSession": "Nova sessão",
       "initializing": "Inicializando...",
-      "restarting": "Reiniciando..."
+      "restarting": "Reiniciando...",
+      "themeRestartHint": "Reinicie para aplicar o novo tema ao Claude Code"
     },
     "actions": {
       "disconnect": "Desconectar",
@@ -193,7 +245,10 @@
       "restart": "Reiniciar",
       "restartTitle": "Reiniciar shell",
       "connect": "Continuar no shell",
-      "connectTitle": "Conectar ao shell"
+      "connectTitle": "Conectar ao shell",
+      "bypass": "Ignorar",
+      "bypassOnTitle": "Ignorar permissões ativado — clique para desativar (reinicia o CLI)",
+      "bypassOffTitle": "Ignorar permissões desativado — clique para ativar (reinicia o CLI)"
     },
     "loading": "Carregando terminal...",
     "connecting": "Conectando ao shell...",
@@ -223,6 +278,14 @@
       "startingNow": "Começando agora"
     },
     "stop": "Parar",
+    "backgroundWork": "Trabalho em segundo plano",
+    "backgroundTask": {
+      "workflow": "Workflow {{name}}",
+      "agent": "Agente {{description}}",
+      "command": "Comando {{description}}",
+      "count": "{{count}} tarefas",
+      "sendAnyway": "Esta sessão ainda tem trabalho em segundo plano rodando:\n{{work}}\n\nUma nova mensagem inicia um novo turno, que interrompe esse trabalho; o que ele ainda não reportou é perdido. Enviar mesmo assim?"
+    },
     "controls": {
       "stopGeneration": "Parar geração",
       "pressEscToStop": "Pressione Esc a qualquer momento para parar"
@@ -237,20 +300,113 @@
   "tasks": {
     "nextTaskPrompt": "Iniciar a próxima tarefa"
   },
+  "message": {
+    "editAndResend": "Editar e reenviar",
+    "forkFromHere": "Bifurcar a partir daqui",
+    "answeredBy": "Respondido por {{model}}"
+  },
+  "export": {
+    "trigger": "Exportar conversa",
+    "heading": "Exportar como",
+    "untitled": "Conversa",
+    "html": {
+      "label": "Página web (.html)",
+      "description": "Autocontido, parece o app, imprime para PDF."
+    },
+    "markdown": {
+      "label": "Markdown (.md)",
+      "description": "Texto simples com chamadas de tool e diffs."
+    },
+    "json": {
+      "label": "JSON (.json)",
+      "description": "Todas as mensagens, sem formatação, para tooling."
+    }
+  },
+  "schedule": {
+    "trigger": "Agendar esta mensagem",
+    "heading": "Enviar depois",
+    "customLabel": "Ou escolha um horário",
+    "confirm": "Agendar",
+    "in": {
+      "15": "Em 15 minutos",
+      "60": "Em uma hora",
+      "480": "Em 8 horas",
+      "1440": "Amanhã"
+    },
+    "pending": "Agendado para {{when}}",
+    "failed": "Não enviado — {{reason}}",
+    "cancel": "Cancelar mensagem agendada",
+    "dismiss": "Dispensar aviso de falha"
+  },
+  "misc": {
+    "copyToClipboard": "Copiar para a área de transferência",
+    "copyCommand": "Copiar comando",
+    "runningTask": "Tarefa em execução",
+    "userAskedRevise": "Usuário pediu para revisar o plano",
+    "typeAnswer": "Digite sua resposta...",
+    "skipOne": "Pular",
+    "skipAll": "Pular tudo",
+    "exportChat": "Exportar chat",
+    "closeImagePreview": "Fechar visualização da imagem",
+    "availableCommands": "Comandos disponíveis",
+    "filterCommands": "Filtrar comandos...",
+    "closeModal": "Fechar modal de resultado do comando",
+    "noDescription": "Nenhuma descrição disponível.",
+    "modelChangeFailed": "Não foi possível alterar o modelo no momento.",
+    "choiceSavedHint": "Sua escolha é salva para esta sessão e vira o padrão para novos chats.",
+    "docsSearchSubtitle": "Pesquise built-ins, padrões de sintaxe e uso de comandos sem sair do chat.",
+    "enterModelInfo": "Informe tanto um nome de modelo quanto um ID de modelo.",
+    "modelSaveFailed": "Não foi possível salvar este modelo.",
+    "modelDeleteFailed": "Não foi possível excluir este modelo.",
+    "cancelEditing": "Cancelar edição",
+    "userDeniedTool": "Usuário negou uso de tool",
+    "showTokenUsage": "Mostrar uso de tokens",
+    "fallbackCommands": {
+      "models": "Navegar modelos disponíveis para o provedor ativo.",
+      "cost": "Revisar uso de tokens para a sessão ativa.",
+      "status": "Inspecionar runtime, versão, provedor e detalhes do ambiente em um só lugar.",
+      "memory": "Abrir o arquivo CLAUDE.md de memória do projeto.",
+      "config": "Abrir configurações e ajustes.",
+      "help": "Mostrar documentação e sintaxe de comandos."
+    },
+    "modalMeta": {
+      "helpEyebrow": "Central de comandos",
+      "helpTitle": "Ajuda e atalhos",
+      "helpSubtitle": "Pesquise built-ins, padrões de sintaxe e uso de comandos sem sair do chat.",
+      "modelsEyebrow": "Seleção de modelo",
+      "modelsTitle": "Escolher um modelo",
+      "modelsSubtitle": "Escolha o modelo que este provedor deve usar.",
+      "costEyebrow": "Telemetria da sessão",
+      "costTitle": "Uso de Tokens",
+      "costSubtitle": "Contagens de tokens de entrada, saída e total para esta sessão.",
+      "statusEyebrow": "Saúde do runtime",
+      "statusTitle": "Status do sistema",
+      "statusSubtitle": "Versão, provedor, runtime e detalhes do ambiente em um só lugar.",
+      "commandResult": "Resultado do comando"
+    },
+    "choiceSavedSession": "Sua escolha é salva para esta sessão e vira o padrão para novos chats.",
+    "choiceSavedDefault": "Sua escolha vira o modelo padrão para novos chats.",
+    "tokensUsed_one": "{{count}} token usado",
+    "tokensUsed_other": "{{count}} tokens usados",
+    "tokensUsed_many": "{{count}} de tokens usados",
+    "compacted": "Compactado",
+    "compactionSummary": "resumo completo",
+    "expandImage": "Expandir {{name}}",
+    "tokensLabel_one": "token",
+    "tokensLabel_other": "tokens",
+    "tokensLabel_many": "tokens",
+    "escClosesModal": "Esc fecha o modal.",
+    "close": "Fechar"
+  },
+  "modelLibrary": {
+    "effortLevels": "Níveis de raciocínio",
+    "effortLevelsHint": "Selecione os níveis de esforço de raciocínio que este modelo aceita. Se nenhum for selecionado, nenhum nível de esforço poderá ser escolhido para este modelo no composer.",
+    "effortSummary": "Raciocínio: {{levels}}"
+  },
   "providerSwitch": {
     "button": "Trocar de IA",
     "heading": "Continuar com:",
     "tooltip": "Continuar esta conversa com outra IA",
     "error": "Não foi possível trocar de IA. Tente novamente."
-  },
-  "composer": {
-    "reasoning": "Raciocínio",
-    "model": "Modelo",
-    "effortDefault": "Padrão",
-    "loadingModels": "Carregando modelos…",
-    "modelMenu": "Selecionar modelo e nível de raciocínio",
-    "permissionHeading": "Como aprovar as ações do {{provider}}?",
-    "contextUsed": "{{percentage}}% do contexto usado ({{used}} de {{total}} tokens). Clique para resumir a conversa e liberar espaço.",
-    "compacting": "Resumindo…"
   }
 }

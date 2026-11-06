@@ -15,8 +15,8 @@ import type { TFunction } from 'i18next';
 
 import { ActionMenu, Button } from '@/shared/ui';
 import { cn } from '@/shared/utils';
-import { useAuth } from '@/modules/auth';
-import type { LLMProvider, MCPServerStatus, Project, ProjectSession, SessionWithProvider } from '@/shared/types';
+import { useCurrentUser } from '@/modules/auth';
+import type { LLMProvider, MCPServerStatus, Project, ProjectSession, SessionWithProvider, SidebarSessionSelection } from '@/shared/types';
 import { getTaskIndicatorStatus } from '@/modules/sidebar/utils/sidebarProjectFormatting';
 import TaskIndicator from '@/modules/sidebar/TaskIndicator';
 import SidebarProjectSessions from '@/modules/sidebar/SidebarProjectSessions';
@@ -44,9 +44,9 @@ type SidebarProjectItemProps = {
   tasksEnabled: boolean;
   mcpServerStatus: MCPServerStatus;
   onRenameDraftChange: (name: string) => void;
-  onToggleProject: (projectName: string) => void;
+  onToggleProject: (projectId: string) => void;
   onProjectSelect: (project: Project) => void;
-  onToggleStarProject: (projectName: string) => void;
+  onToggleStarProject: (projectId: string) => void;
   onStartEditingProject: (project: Project) => void;
   onCancelEditingProject: () => void;
   onSaveProjectName: (projectId: string, nextName: string) => void;
@@ -59,11 +59,18 @@ type SidebarProjectItemProps = {
   onForkSession?: (session: SessionWithProvider) => void;
   onLoadMoreSessions: (projectId: string) => void;
   activeSessions: ReadonlySet<string>;
+  backgroundSessionIds: ReadonlySet<string>;
   attentionSessionIds: ReadonlySet<string>;
   onNewSession: (project: Project) => void;
   onStartEditingSession: (projectId: string, sessionId: string, initialName: string) => void;
   onCancelEditingSession: () => void;
   onSaveEditingSession: (projectName: string, sessionId: string, summary: string, provider: LLMProvider) => void;
+  /** The sessions ticked in this project's list, or null when it is not the one selecting. */
+  selectedSessionIds: ReadonlySet<string> | null;
+  onSetSessionSelection: (selection: SidebarSessionSelection) => void;
+  onToggleSessionSelected: (projectId: string, sessionId: string) => void;
+  onCancelSessionSelection: () => void;
+  onDeleteSelectedSessions: (sessionIds: string[]) => void;
   t: TFunction;
 };
 
@@ -106,11 +113,17 @@ function SidebarProjectItem({
   onForkSession,
   onLoadMoreSessions,
   activeSessions,
+  backgroundSessionIds,
   attentionSessionIds,
   onNewSession,
   onStartEditingSession,
   onCancelEditingSession,
   onSaveEditingSession,
+  selectedSessionIds,
+  onSetSessionSelection,
+  onToggleSessionSelected,
+  onCancelSessionSelection,
+  onDeleteSelectedSessions,
   t,
 }: SidebarProjectItemProps) {
   // Project identity is tracked by the DB-assigned `projectId` everywhere
@@ -118,7 +131,7 @@ function SidebarProjectItem({
   const isSelected = selectedProject?.projectId === project.projectId;
   // Project management (rename/delete/emoji/folder/star) is admin-only; members
   // only open and use the projects granted to them.
-  const { user } = useAuth();
+  const user = useCurrentUser();
   const isAdmin = user?.role === 'admin';
   const [showEmojiModal, setShowEmojiModal] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
@@ -200,9 +213,9 @@ function SidebarProjectItem({
 
   return (
     <div className={cn('md:space-y-1', isDeleting && 'opacity-50 pointer-events-none')}>
-      <div className="md:group group">
+      <div className="sticky top-0 z-10 md:group group">
         {isCompact && (
-        <div>
+        <div className="bg-background">
           <div
             className={cn(
               'p-3 mx-3 my-1 rounded-lg bg-card border border-border/50 active:scale-[0.98] transition-all duration-150',
@@ -263,6 +276,8 @@ function SidebarProjectItem({
                         }
 
                         if (event.key === 'Escape') {
+                          // Cancelling the rename must not also close the code editor.
+                          event.stopPropagation();
                           onCancelEditingProject();
                         }
                       }}
@@ -348,13 +363,18 @@ function SidebarProjectItem({
         )}
 
         {!isCompact && (
-        <div className="relative hidden md:block">
+        // sticky (upstream 1.37.4) also anchors the absolute star/actions.
+        <div className="sticky top-0 z-10 hidden md:block">
           <Button
             variant="ghost"
             className={cn(
               'h-auto w-full items-center p-2 font-normal hover:bg-accent/50',
               !isEditing && isAdmin && 'pr-10',
-              isSelected && 'bg-accent text-accent-foreground',
+              isSelected
+                ? 'bg-accent text-accent-foreground'
+                : isStarred
+                  ? 'bg-background hover:bg-accent/50'
+                  : 'bg-background',
               isStarred &&
                 !isSelected &&
                 'bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/20',
@@ -405,6 +425,8 @@ function SidebarProjectItem({
                       saveProjectName();
                     }
                     if (event.key === 'Escape') {
+                      // Cancelling the rename must not also close the code editor.
+                      event.stopPropagation();
                       onCancelEditingProject();
                     }
                   }}
@@ -484,6 +506,7 @@ function SidebarProjectItem({
         hasMoreSessions={Boolean(project.sessionMeta?.hasMore)}
         isLoadingMoreSessions={isLoadingMoreSessions}
         activeSessions={activeSessions}
+        backgroundSessionIds={backgroundSessionIds}
         attentionSessionIds={attentionSessionIds}
         currentTime={currentTime}
         sessionRenameId={sessionRenameId}
@@ -498,6 +521,11 @@ function SidebarProjectItem({
         onForkSession={onForkSession}
         onLoadMoreSessions={onLoadMoreSessions}
         onNewSession={onNewSession}
+        selectedSessionIds={selectedSessionIds}
+        onSetSessionSelection={onSetSessionSelection}
+        onToggleSessionSelected={onToggleSessionSelected}
+        onCancelSessionSelection={onCancelSessionSelection}
+        onDeleteSelectedSessions={onDeleteSelectedSessions}
         t={t}
       />
 

@@ -84,6 +84,27 @@
       "openPanel": "Abrir painel de configurações",
       "draggingStatus": "Arrastando...",
       "toggleAndMove": "Clique para alternar, arraste para mover"
+    },
+    "tabs": {
+      "settings": "Configurações",
+      "commands": "Comandos"
+    },
+    "pin": "Fixar painel aberto",
+    "unpin": "Desfixar painel",
+    "close": "Fechar painel",
+    "commands": {
+      "searchPlaceholder": "Pesquisar comandos…",
+      "noProject": "Selecione um projeto para ver seus comandos.",
+      "loading": "Carregando comandos…",
+      "empty": "Nenhum comando disponível para este projeto.",
+      "noMatches": "Nenhum comando corresponde à sua pesquisa.",
+      "loadError": "Os comandos não puderam ser carregados.",
+      "groups": {
+        "builtIn": "Integrados",
+        "custom": "Personalizados",
+        "skills": "Skills"
+      },
+      "insertTitle": "Inserir {{command}} no chat"
     }
   },
   "terminalShortcuts": {
@@ -147,15 +168,16 @@
     }
   },
   "appearanceSettings": {
-    "customThemes": {
-      "title": "Temas do sistema",
-      "label": "Cores, fonte e tamanho",
-      "description": "Escolha entre temas claros e escuros e personalize a leitura",
-      "button": "Escolher tema"
-    },
     "darkMode": {
       "label": "Modo escuro",
       "description": "Alternar entre os temas claro e escuro"
+    },
+    "theme": {
+      "label": "Tema",
+      "description": "Escolha uma aparência clara ou escura, ou siga seu sistema operacional",
+      "light": "Claro",
+      "dark": "Escuro",
+      "system": "Seguir a aparência do sistema"
     },
     "projectSorting": {
       "label": "Ordenação de projetos",
@@ -185,6 +207,12 @@
         "label": "Tamanho da fonte",
         "description": "Tamanho da fonte do editor em pixels"
       }
+    },
+    "customThemes": {
+      "title": "Temas do sistema",
+      "label": "Cores, fonte e tamanho",
+      "description": "Escolha entre temas claros e escuros e personalize a leitura",
+      "button": "Escolher tema"
     }
   },
   "mcpForm": {
@@ -234,7 +262,24 @@
       "saving": "Salvando...",
       "addServer": "Adicionar servidor",
       "updateServer": "Atualizar servidor"
-    }
+    },
+    "scopes": {
+      "userGlobal": "Usuário (Global)",
+      "userAllProviders": "Usuário (Todos os provedores)",
+      "local": "Claude Local",
+      "project": "Projeto",
+      "projectAllProviders": "Projeto (Todos os provedores)",
+      "userGlobalDesc": "Disponível em todos os projetos na sua máquina",
+      "userAllProvidersDesc": "Grava na configuração de usuário de cada provedor e fica disponível em todos os projetos nesta máquina",
+      "localDesc": "Armazenado nas configurações do usuário do Claude para o projeto selecionado",
+      "projectDesc": "Armazenado no espaço de trabalho do projeto selecionado",
+      "projectAllProvidersDesc": "Grava no espaço de trabalho do projeto selecionado para todos os provedores"
+    },
+    "unsupportedTransport": "Adicionar servidor MCP suporta apenas stdio e http em todos os provedores, não {{transport}}.",
+    "addToProvider": "{{action}} para {{provider}}",
+    "workingDirectory": "Diretório de trabalho",
+    "envVarNames": "Nomes das variáveis de ambiente",
+    "bearerTokenEnvVar": "Variável de ambiente do token Bearer"
   },
   "saveStatus": {
     "success": "Configurações salvas com sucesso!",
@@ -360,6 +405,19 @@
       }
     },
     "connectionStatus": "Status da conexão",
+    "subscriptionOverride": {
+      "title": "Seu login de assinatura não está sendo usado",
+      "description": "{{variable}} está definido em {{source}}, então o Claude Code cobra cada requisição para essa chave como uso pay-as-you-go da API em vez de usar seu login de assinatura.",
+      "descriptionWithEmail": "{{variable}} está definido em {{source}}, então o Claude Code cobra cada requisição para essa chave como uso pay-as-you-go da API em vez de usar seu login de assinatura ({{email}}).",
+      "source": {
+        "process_env": "o ambiente do servidor",
+        "settings_file": "~/.claude/settings.json"
+      },
+      "fix": {
+        "process_env": "Para usar a assinatura, remova {{variable}} de onde o servidor é iniciado (.env, perfil do shell, unidade de serviço) e reinicie o servidor.",
+        "settings_file": "Para usar a assinatura, remova {{variable}} do bloco \"env\" de ~/.claude/settings.json."
+      }
+    },
     "login": {
       "title": "Entrar",
       "reAuthenticate": "Autenticar novamente",
@@ -368,6 +426,7 @@
       "button": "Entrar",
       "reLoginButton": "Entrar novamente"
     },
+    "error": "Erro: {{error}}",
     "multipleAccounts": {
       "title": "Contas conectadas",
       "description": "Escolha a conta ativa ou conecte outras contas para alternar quando o limite for atingido.",
@@ -380,8 +439,7 @@
       "remove": "Remover conta",
       "autoSwitch": "Trocar automaticamente ao atingir o limite",
       "autoSwitchDescription": "O CloudCLI tenta a próxima conta conectada e repete a solicitação atual."
-    },
-    "error": "Erro: {{error}}"
+    }
   },
   "permissions": {
     "title": "Configurações de permissão",
@@ -402,6 +460,25 @@
       "description": "Ferramentas que são automaticamente bloqueadas sem solicitar permissão",
       "placeholder": "ex.: \"Bash(rm:*)\"",
       "empty": "Nenhuma ferramenta bloqueada configurada"
+    },
+    "settingsFiles": {
+      "title": "Regras dos arquivos de configuração do Claude",
+      "description": "O CLI do Claude também aplica estas regras, além das listas acima. Uma regra deny vence onde quer que seja definida, mas uma regra ask não solicita permissão para uma ferramenta que ferramentas permitidas já permite. As regras são somente leitura aqui; edite-as nos arquivos.",
+      "sources": {
+        "user": "Suas configurações",
+        "managed": "Configurações gerenciadas (administrador)"
+      },
+      "groups": {
+        "allow": "Permitir",
+        "ask": "Perguntar",
+        "deny": "Negar"
+      },
+      "missing": "Arquivo não encontrado, então não adiciona regras.",
+      "invalid": "Este arquivo não pôde ser lido. Verifique se é um JSON válido.",
+      "empty": "Nenhuma regra de permissão neste arquivo.",
+      "loading": "Carregando regras…",
+      "loadFailed": "Não foi possível carregar as regras dos arquivos de configuração do Claude.",
+      "projectNote": "O .claude/settings.json e .claude/settings.local.json de um projeto também se aplicam a chats naquele projeto. O CLI do Claude ignora regras allow em .claude/settings.json até que a pasta seja confiável: execute o Claude Code interativamente lá uma vez e aceite o diálogo de confiança."
     },
     "allowedCommands": {
       "title": "Comandos de shell permitidos",
@@ -581,12 +658,98 @@
       "description": "Quadro Kanban para Issues do GitHub com sincronização bidirecional com o TaskMaster e instalação automática da skill CLI /github-task",
       "install": "Instalar"
     },
+    "claudeUsagePlugin": {
+      "name": "Uso do Claude",
+      "badge": "não oficial",
+      "description": "Acompanhe limites do plano do Claude Code em tempo real e explore histórico de 30 dias de tokens e custos.",
+      "install": "Instalar"
+    },
+    "codexUsagePlugin": {
+      "name": "Uso do Codex",
+      "badge": "não oficial",
+      "description": "Acompanhe limites do plano do Codex em tempo real, tempo de reset e atividade de tokens da conta nos últimos 30 dias.",
+      "install": "Instalar"
+    },
+    "glmUsagePlugin": {
+      "name": "Uso do GLM",
+      "badge": "não oficial",
+      "description": "Acompanhe cotas do plano de codificação GLM/Zhipu em tempo real e histórico de 30 dias de tokens.",
+      "install": "Instalar"
+    },
+    "agentMonitorPlugin": {
+      "name": "Monitor de agentes",
+      "badge": "não oficial",
+      "description": "Veja subagentes e shells em segundo plano que continuam rodando após o fim de um chat e pare-os.",
+      "install": "Instalar"
+    },
     "morePlugins": "Mais",
     "enable": "Ativar",
     "disable": "Desativar",
     "installAriaLabel": "URL do repositório git do plugin",
     "tab": "aba",
     "runningStatus": "em execução"
+  },
+  "skillsPage": {
+    "description": "Gerencie skills do {{provider}} a partir de arquivos locais, pastas completas e locais cientes de projeto.",
+    "searchPlaceholder": "Pesquisar skills...",
+    "searchAriaLabel": "Pesquisar skills",
+    "clearSearch": "Limpar pesquisa de skills",
+    "addSkill": "Adicionar Skill",
+    "refresh": "Atualizar",
+    "scanningProjectSkills": "Escaneando skills do projeto...",
+    "addDialogTitle": "Adicionar Skill do {{provider}}",
+    "addDialogDescription": "Envie um arquivo SKILL.md ou uma pasta completa de skill.",
+    "closeDialog": "Fechar diálogo de adicionar skill",
+    "savedSuccessfully": "Skills salvas com sucesso.",
+    "footerHint": "Uploads de pasta mantêm o nome da pasta selecionada; arquivos autônomos usam o `name` no `SKILL.md`.",
+    "installWithCount_one": "Instalar {{count}} Skill",
+    "installWithCount_other": "Instalar {{count}} Skills",
+    "installWithCount_many": "Instalar {{count}} de Skills",
+    "installPlain": "Instalar Skill",
+    "loading": "Carregando skills do {{provider}}…",
+    "emptyTitle": "Nenhuma skill descoberta ainda",
+    "emptyDescription": "Adicione uma skill global acima ou crie pastas de skills específicas do projeto no seu espaço de trabalho.",
+    "noMatchTitle": "Nenhuma skill correspondente",
+    "noMatchDescription": "Tente um comando, nome, escopo, projeto ou caminho de origem diferente.",
+    "count_one": "{{count}} skill",
+    "count_other": "{{count}} skills",
+    "count_many": "{{count}} de skills",
+    "noDescription": "Nenhuma descrição fornecida no front matter da skill.",
+    "pluginBadge": "Plugin: {{name}}",
+    "projectBadge": "Projeto: {{name}}",
+    "source": "Origem",
+    "upload": {
+      "dropTitle": "Solte uma pasta de skill ou SKILL.md",
+      "dropHint": "Pastas podem incluir scripts, referências e assets.",
+      "chooseFiles": "Escolher arquivos",
+      "chooseFolder": "Escolher pasta",
+      "readyToInstall": "Pronto para instalar",
+      "filesCount_one": "{{count}} arquivo",
+      "filesCount_other": "{{count}} arquivos",
+      "filesCount_many": "{{count}} de arquivos",
+      "markdownFile": "Arquivo Markdown",
+      "removeFile": "Remover {{name}}",
+      "hideInstallLocation": "Ocultar local de instalação",
+      "whereToInstall": "Onde isso será instalado?"
+    },
+    "errors": {
+      "tooManyFiles": "Uma pasta de skill pode conter até {{max}} arquivos.",
+      "tooLarge": "Pastas de skills selecionadas devem ter menos de 30 MB no total.",
+      "noSkillMd": "A pasta selecionada não contém um arquivo SKILL.md.",
+      "couldNotReadSkillMd": "Não foi possível ler SKILL.md de {{folder}}.",
+      "readFailed": "Falha ao ler pasta de skill",
+      "dropMarkdown": "Solte um ou mais arquivos markdown ou uma pasta contendo SKILL.md.",
+      "addFirst": "Adicione um ou mais arquivos markdown primeiro.",
+      "importFailed": "Falha ao importar skills"
+    },
+    "scopes": {
+      "user": "Usuário",
+      "plugin": "Plugin",
+      "repo": "Repo",
+      "project": "Projeto",
+      "admin": "Admin",
+      "system": "Sistema"
+    }
   },
   "browserUse": {
     "title": "Navegador",
@@ -724,5 +887,48 @@
     "loadStatusFailed": "Falha ao carregar o status do Navegador",
     "saveFailed": "Falha ao salvar as configurações do Navegador",
     "installFailed": "Falha ao instalar o motor do navegador"
+  },
+  "mcpServersAdd": {
+    "menuLabel": "Adicionar servidor MCP",
+    "globalButtonLabel": "Adicionar servidor MCP global",
+    "providerButtonLabel": "Adicionar servidor MCP do {{provider}}",
+    "globalAddDescription": "Adicionar servidor MCP global grava um servidor stdio ou HTTP comum no Claude, Cursor, Codex e OpenCode.",
+    "providerAddDescription": "{{button}} altera apenas o {{provider}}.",
+    "globalModalDescription": "Adiciona este servidor MCP a todos os provedores: Claude, Cursor, Codex e OpenCode. Apenas transportes stdio e HTTP são suportados porque a mesma configuração deve funcionar em todos os provedores.",
+    "refreshingScopes": "Atualizando escopos do projeto...",
+    "loadingServers": "Carregando servidores MCP...",
+    "configCwd": "Cwd",
+    "configEnvVars": "Vars de ambiente"
+  },
+  "mcpTeamCard": {
+    "title": "Configs MCP da equipe",
+    "description": "Compartilhe configurações de servidores MCP com sua equipe. Todos ficam em sincronia automaticamente.",
+    "proLink": "Disponível com CloudCLI Pro"
+  },
+  "mcpServersAddErrors": {
+    "loadFailedProvider": "Falha ao carregar servidores MCP do {{provider}}",
+    "deleteFailed": "Falha ao excluir servidor MCP",
+    "saveFailed": "Falha ao salvar servidor MCP",
+    "saveGlobalFailed": "Falha ao salvar servidor MCP em todos os provedores",
+    "selectProjectRequired": "Selecione um projeto para servidores MCP com escopo de projeto",
+    "globalScopeUnsupported": "Adicionar servidor MCP suporta apenas escopo de usuário ou projeto em todos os provedores.",
+    "globalAddFailed": "Falha ao adicionar servidor MCP a todos os provedores. {{details}}",
+    "deleteConfirm": "Tem certeza de que quer excluir este servidor MCP?",
+    "unknownError": "Erro desconhecido"
+  },
+  "about": {
+    "tagline": "Interface de assistente de codificação com IA de código aberto",
+    "starOnGitHub": "Dar estrela no GitHub",
+    "docs": "Docs",
+    "hostedTitle": "Experimente o CloudCLI hospedado",
+    "hostedDescription": "Colaboração em equipe, configs MCP compartilhados, sincronização de configurações entre ambientes e infraestrutura gerenciada.",
+    "learnMore": "Saiba mais",
+    "proFeaturesTitle": "Recursos do CloudCLI Pro",
+    "syncSettingsTitle": "Sincronizar configurações",
+    "syncSettingsDescription": "Mantenha suas preferências, configs MCP e tema em sincronia em todos os seus ambientes.",
+    "teamManagementTitle": "Gerenciamento de equipe",
+    "teamManagementDescription": "Múltiplos usuários, acesso baseado em funções e projetos compartilhados para sua equipe.",
+    "licensed": "Licenciado sob AGPL-3.0",
+    "proCta": "Disponível com CloudCLI Pro"
   }
 }

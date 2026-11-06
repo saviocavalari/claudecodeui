@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import type { SidebarProjectListProps } from '@/shared/types';
 import { getPageTitle } from '@/shared/utils';
@@ -14,7 +14,7 @@ export default function SidebarProjectList({
   selectedSession,
   isLoading,
   loadingProgress,
-  expandedProjects,
+  isProjectExpanded,
   activeRename,
   initialSessionsLoaded,
   currentTime,
@@ -26,8 +26,8 @@ export default function SidebarProjectList({
   onLoadMoreSessions,
   loadingMoreProjects,
   activeSessions,
+  backgroundSessionIds,
   attentionSessionIds,
-  forceExpanded = false,
   isProjectStarred,
   onRenameDraftChange,
   onToggleProject,
@@ -46,8 +46,24 @@ export default function SidebarProjectList({
   onStartEditingSession,
   onCancelEditingSession,
   onSaveEditingSession,
+  sessionSelection,
+  onSetSessionSelection,
+  onToggleSessionSelected,
+  onCancelSessionSelection,
+  onDeleteSelectedSessions,
   t,
 }: SidebarProjectListProps) {
+  // One array per project list, not per render: a fresh array on every render
+  // made every project row re-render on any sidebar change (e.g. a rename).
+  // Keyed by the folder names themselves, since the projects array is rebuilt
+  // on refreshes that change no folder at all.
+  const folderKey = Array.from(new Set(
+    projects
+      .map((item) => item.folder)
+      .filter((folder): folder is string => typeof folder === 'string' && folder.length > 0),
+  )).join('\u0000');
+  const existingFolders = useMemo(() => (folderKey ? folderKey.split('\u0000') : []), [folderKey]);
+
   const pageTitle = getPageTitle(selectedProject, selectedSession);
   const state = (
     <SidebarProjectsState
@@ -81,6 +97,11 @@ export default function SidebarProjectList({
                 activeRename?.target === 'session' && activeRename.projectId === project.projectId
                   ? activeRename
                   : null;
+              // Resolved here for the same reason as the renames: only the
+              // project in selection mode sees a set, every other row keeps
+              // being handed the same `null` and its memo holds.
+              const selectedSessionIds =
+                sessionSelection?.projectId === project.projectId ? sessionSelection.sessionIds : null;
 
               // React key + per-project state lookups all use the DB `projectId`
               // so they remain stable across renames and session changes.
@@ -90,7 +111,7 @@ export default function SidebarProjectList({
                 project={project}
                 selectedProject={selectedProject}
                 selectedSession={selectedSession}
-                isExpanded={forceExpanded || expandedProjects.has(project.projectId)}
+                isExpanded={isProjectExpanded(project.projectId)}
                 isDeleting={deletingProjects.has(project.projectId)}
                 isStarred={isProjectStarred(project.projectId)}
                 isEditing={renamingProject !== null}
@@ -112,18 +133,24 @@ export default function SidebarProjectList({
                 onSaveProjectName={onSaveProjectName}
                 onSaveProjectEmoji={onSaveProjectEmoji}
                 onSaveProjectFolder={onSaveProjectFolder}
-                existingFolders={Array.from(new Set(projects.map((item) => item.folder).filter((folder): folder is string => typeof folder === 'string' && folder.length > 0)))}
+                existingFolders={existingFolders}
                 onDeleteProject={onDeleteProject}
                 onSessionSelect={onSessionSelect}
                 onDeleteSession={onDeleteSession}
                 onForkSession={onForkSession}
                 onLoadMoreSessions={onLoadMoreSessions}
                 activeSessions={activeSessions}
+                backgroundSessionIds={backgroundSessionIds}
                 attentionSessionIds={attentionSessionIds}
                 onNewSession={onNewSession}
                 onStartEditingSession={onStartEditingSession}
                 onCancelEditingSession={onCancelEditingSession}
                 onSaveEditingSession={onSaveEditingSession}
+                selectedSessionIds={selectedSessionIds}
+                onSetSessionSelection={onSetSessionSelection}
+                onToggleSessionSelected={onToggleSessionSelected}
+                onCancelSessionSelection={onCancelSessionSelection}
+                onDeleteSelectedSessions={onDeleteSelectedSessions}
                 t={t}
               />
             );
