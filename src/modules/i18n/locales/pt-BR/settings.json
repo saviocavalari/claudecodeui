@@ -887,7 +887,14 @@
       "observe": "Clique em Controlar para interagir com esta sessão.",
       "keyboard": "Toque aqui para digitar no campo selecionado da página",
       "surface": "Página interativa do navegador"
-    }
+    },
+    "inputPlaceholder": "Digite o texto e aperte Enter para enviar à página",
+    "inputSend": "Enviar",
+    "inputEnter": "Enter",
+    "inputTab": "Tab",
+    "inputBackspace": "Apagar",
+    "inputHint": "Clique na captura para clicar na página, ou selecione-a e use as setas (Shift para passos maiores) e depois Enter ou Espaço.",
+    "surfaceAriaLabel": "Captura do navegador. Use as setas para mover o ponteiro e Enter ou Espaço para clicar."
   },
   "browserUseSettings": {
     "sectionTitle": "Navegador",

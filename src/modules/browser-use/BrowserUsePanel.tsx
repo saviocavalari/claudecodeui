@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bot,
@@ -45,6 +45,7 @@ const BROWSER_USE_PANEL_ERROR_KEYS: Record<string, string> = {
   BROWSER_USE_SESSION_STOP_FAILED: 'browserUse.actionFailed',
   BROWSER_USE_SESSION_DELETE_FAILED: 'browserUse.actionFailed',
   BROWSER_USE_MANUAL_FAILED: 'browserUse.manual.failed',
+  BROWSER_USE_SESSION_INPUT_FAILED: 'browserUse.actionFailed',
   BROWSER_USE_RUNTIME_INSTALL_FAILED: 'browserUse.installFailed',
 };
 
@@ -128,6 +129,8 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  // Shared by refresh and browser input so a refresh cannot overwrite a newer input result (or the reverse).
+  const sessionOperationLockRef = useRef(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +151,8 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
         : t('browserUse.runtimeSetupRequired');
 
   const refresh = useCallback(async () => {
+    if (sessionOperationLockRef.current) return;
+    sessionOperationLockRef.current = true;
     setIsRefreshing(true);
     try {
       const [statusResponse, sessionsResponse] = await Promise.all([
@@ -168,6 +173,7 @@ export default function BrowserUsePanel({ isVisible, onShowSettings }: BrowserUs
     } catch (err) {
       setError(localizeApiError(err, 'browserUse.loadFailed', t));
     } finally {
+      sessionOperationLockRef.current = false;
       setIsRefreshing(false);
     }
   }, [t]);
