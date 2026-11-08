@@ -425,7 +425,9 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, s
                     copy and speak it is not gated on the copy control, and an
                     exported transcript keeps it wherever the footer renders. */}
                 <MessageModelLabel model={message.model} />
-                {!isGrouped && <span>{formattedTime}</span>}
+                {/* A reply that ends a round is usually grouped under its tool
+                    calls, so the copy control also carries its time. */}
+                {(!isGrouped || shouldShowAssistantCopyControl) && <span>{formattedTime}</span>}
               </div>
             )}
           </div>
