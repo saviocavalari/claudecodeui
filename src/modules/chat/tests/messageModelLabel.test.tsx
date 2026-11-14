@@ -14,20 +14,29 @@ import type { ChatMessage, NormalizedMessage } from '@/shared/types';
 // The model ids that actually appear on assistant rows in real Claude Code
 // transcripts, taken from a ~86k-row sample of this machine's `~/.claude`.
 describe('the label a reported model is shortened to', () => {
-  it('names the family for a dated or undated id', () => {
-    expect(formatAnsweringModelLabel('claude-opus-5')).toBe('Opus');
-    expect(formatAnsweringModelLabel('claude-sonnet-5')).toBe('Sonnet');
-    expect(formatAnsweringModelLabel('claude-haiku-4-5-20251001')).toBe('Haiku');
-    expect(formatAnsweringModelLabel('claude-fable-5-1')).toBe('Fable');
+  it('names the family and its version for a dated or undated id', () => {
+    expect(formatAnsweringModelLabel('claude-opus-5')).toBe('Opus 5');
+    expect(formatAnsweringModelLabel('claude-opus-5-5')).toBe('Opus 5.5');
+    expect(formatAnsweringModelLabel('claude-sonnet-5')).toBe('Sonnet 5');
+    expect(formatAnsweringModelLabel('claude-haiku-4-5-20251001')).toBe('Haiku 4.5');
+    expect(formatAnsweringModelLabel('claude-fable-5-1')).toBe('Fable 5.1');
+    expect(formatAnsweringModelLabel('claude-fable-5-2')).toBe('Fable 5.2');
+  });
+
+  it('shows the family alone for an alias that carries no version', () => {
+    // Two generations of one family ("Fable 5.1", "Fable 5.2") must be told
+    // apart; an alias such as `fable` names no generation, so only the family
+    // is known.
     expect(formatAnsweringModelLabel('opus')).toBe('Opus');
+    expect(formatAnsweringModelLabel('fable')).toBe('Fable');
   });
 
   it('keeps a 1M-context id distinct from the base model if one is ever reported', () => {
     // Claude Code writes the base id on assistant rows today, so this guards
     // the mapping rather than describing current transcripts: the same family
     // at a different context window and price must not read as the base.
-    expect(formatAnsweringModelLabel('claude-opus-5[1m]')).toBe('Opus 1M');
-    expect(formatAnsweringModelLabel('claude-opus-5')).toBe('Opus');
+    expect(formatAnsweringModelLabel('claude-opus-5[1m]')).toBe('Opus 5 1M');
+    expect(formatAnsweringModelLabel('claude-opus-5')).toBe('Opus 5');
   });
 
   it('shows an unrecognized id verbatim rather than dropping it', () => {
@@ -78,7 +87,7 @@ describe('the model label in the message footer', () => {
 
     const label = container.querySelector('[title="Answered by claude-opus-5"]');
     assert.ok(label, 'the footer must carry the model the provider reported');
-    assert.equal(label?.textContent, 'Opus');
+    assert.equal(label?.textContent, 'Opus 5');
   });
 
   it('shows nothing for a reply the provider reported no model for', () => {

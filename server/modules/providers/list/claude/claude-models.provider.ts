@@ -99,6 +99,22 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
       },
     },
     {
+      value: 'fable',
+      label: 'Fable',
+      description: 'Latest Fable model for your toughest challenges.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
       value: 'best',
       label: 'Best available',
       description: 'Use the most capable model available, otherwise the latest Opus.',
@@ -131,9 +147,25 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
       },
     },
     {
+      value: 'claude-fable-5-2',
+      label: 'Fable 5.2',
+      description: 'For your toughest challenges.',
+      effort: {
+        default: 'high',
+        values: [
+          { value: 'low' },
+          { value: 'medium' },
+          { value: 'high' },
+          { value: 'xhigh' },
+          { value: 'max' },
+          ULTRACODE_EFFORT_OPTION,
+        ],
+      },
+    },
+    {
       value: 'claude-fable-5-1',
       label: 'Fable 5.1',
-      description: 'For your toughest challenges.',
+      description: 'Previous Fable generation.',
       effort: {
         default: 'high',
         values: [
@@ -149,7 +181,7 @@ export const CLAUDE_PREDEFINED_MODELS: ProviderModelsDefinition = {
     {
       value: 'claude-fable-5',
       label: 'Fable 5',
-      description: 'Previous Fable generation.',
+      description: 'Fable 5, pinned.',
       effort: {
         default: 'high',
         values: [

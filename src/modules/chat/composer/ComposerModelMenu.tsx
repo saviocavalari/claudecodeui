@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ProviderModelOption } from '@/shared/types';
 import { DEFAULT_EFFORT_VALUE } from '@/shared/constants';
 import { useComposerMenuAnchor } from '@/modules/chat/hooks/useComposerMenuAnchor';
+import { formatAnsweringModelLabel } from '@/modules/chat/utils/modelLabel';
 import {
   ComposerMenuHeading,
   ComposerMenuItem,
@@ -65,7 +66,10 @@ function ComposerModelMenu({
     () => modelOptions.find((option) => option.value === model) ?? null,
     [model, modelOptions],
   );
-  const modelLabel = selectedModelOption?.label || model;
+  // A stored model the catalog no longer lists (e.g. `claude-fable-5-1[1m]`
+  // after the 1M variants left the menu) is named by family and version, not
+  // shown as a raw id that the narrow phone-width trigger would truncate.
+  const modelLabel = selectedModelOption?.label || formatAnsweringModelLabel(model) || model;
 
   const hasEffortSection = resolvedEffortOptions.length > 0;
   const hasModelSection = modelOptions.length > 0 || modelsLoading;
