@@ -37,6 +37,7 @@ import {
   notifyRunStopped,
   notifyUserIfEnabled
 } from '@/modules/notifications/index.js';
+import { applyMemberGuard, resolveMemberGuard } from '@/modules/providers/list/claude/claude-member-guard.js';
 import { providerAccountsService } from '@/modules/providers/services/provider-accounts.service.js';
 import { sessionHistoryCache } from '@/modules/providers/services/session-history-cache.service.js';
 import {
@@ -1127,6 +1128,10 @@ async function queryClaudeSDK(
     if (mcpServers) {
       sdkOptions.mcpServers = mcpServers;
     }
+
+    // Non-admin sessions lose the owner's personal tools and get told who they
+    // are really talking to (see claude-member-guard.ts).
+    applyMemberGuard(sdkOptions, resolveMemberGuard(ws?.userId));
 
     // Every turn uses streaming input so stdin stays open past the turn's
     // `result`. The message list is reusable, but each query attempt needs its
