@@ -136,7 +136,9 @@
     "forkSessionError": "Não foi possível fazer fork desta sessão. Tente novamente.",
     "deleteSessionsPartialFailure_one": "{{count}} sessão de {{total}} não pôde ser excluída. Tente novamente.",
     "deleteSessionsPartialFailure_other": "{{count}} de {{total}} sessões não puderam ser excluídas. Tente novamente.",
-    "deleteSessionsPartialFailure_many": "{{count}} de {{total}} sessões não puderam ser excluídas. Tente novamente."
+    "deleteSessionsPartialFailure_many": "{{count}} de {{total}} sessões não puderam ser excluídas. Tente novamente.",
+    "archiveSessionFailed": "Não foi possível arquivar a conversa. Tente de novo.",
+    "archiveSessionError": "Erro ao arquivar a conversa. Tente de novo."
   },
   "version": {
     "updateAvailable": "Atualização disponível",
@@ -179,9 +181,6 @@
     "sessionCount_many": "Este projeto contém {{count}} de conversas.",
     "removeFromSidebar": "Remover apenas da barra lateral",
     "archiveProject": "Arquivar projeto",
-    "archiveSession": "Arquivar sessão",
-    "archiveSessionNotice": "Arquivar mantém a sessão fora da lista ativa preservando seu histórico.",
-    "archivedSessionNotice": "Esta sessão já está arquivada. Você pode mantê-la oculta ou excluí-la permanentemente.",
     "deleteSessionPermanently": "Excluir permanentemente",
     "deleteAllData": "Excluir todos os dados permanentemente",
     "allConversationsDeleted": "O projeto será removido da barra lateral. Seus arquivos, memórias e dados das sessões serão preservados.",
@@ -198,6 +197,8 @@
     "archiveSessions_many": "Arquivar {{count}} de sessões",
     "archiveSessionsNotice_one": "Arquivar mantém a sessão fora da lista ativa preservando seu histórico.",
     "archiveSessionsNotice_other": "Arquivar mantém as sessões fora da lista ativa preservando seu histórico.",
-    "archiveSessionsNotice_many": "Arquivar mantém as sessões fora da lista ativa preservando seu histórico."
+    "archiveSessionsNotice_many": "Arquivar mantém as sessões fora da lista ativa preservando seu histórico.",
+    "confirmDeleteSession": "Excluir de vez",
+    "deleteSessionNotice": "A conversa e o histórico serão apagados. Não dá para desfazer."
   }
 }

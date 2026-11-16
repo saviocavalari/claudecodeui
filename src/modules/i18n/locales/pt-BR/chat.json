@@ -171,6 +171,13 @@
       "willSend": "Será enviada quando esta terminar",
       "edit": "Editar mensagem enfileirada",
       "delete": "Excluir mensagem enfileirada"
+    },
+    "steer": {
+      "label": "Intervindo",
+      "sending": "Enviando…",
+      "willRead": "{{provider}} lê na próxima ação que fizer",
+      "attachments_one": "{{count}} arquivo anexado",
+      "attachments_other": "{{count}} arquivos anexados"
     }
   },
   "composer": {
@@ -293,7 +300,15 @@
       "workflow": "Workflow {{name}}",
       "agent": "Agente {{description}}",
       "command": "Comando {{description}}",
-      "count": "{{count}} tarefas"
+      "count": "{{count}} tarefas",
+      "prompt": {
+        "title": "Esta conversa ainda tem trabalho rodando em segundo plano",
+        "description": "Uma mensagem nova começa outra rodada e para esse trabalho; o que ele ainda não informou se perde. Ponha a mensagem na fila para enviar quando o trabalho terminar.",
+        "cancel": "Cancelar",
+        "queue": "Pôr na fila",
+        "sendAnyway": "Enviar mesmo assim",
+        "sideQuestion": "Pergunta paralela"
+      }
     },
     "controls": {
       "stopGeneration": "Parar geração",
@@ -329,7 +344,8 @@
     "json": {
       "label": "JSON (.json)",
       "description": "Todas as mensagens, sem formatação, para tooling."
-    }
+    },
+    "includeSideQuestions": "Incluir perguntas paralelas"
   },
   "schedule": {
     "trigger": "Agendar esta mensagem",
@@ -421,5 +437,60 @@
     "heading": "Continuar com:",
     "tooltip": "Continuar esta conversa com outra IA",
     "error": "Não foi possível trocar de IA. Tente novamente."
+  },
+  "mcpElicitation": {
+    "asks": "{{server}} pede uma informação sua",
+    "submit": "Enviar",
+    "decline": "Recusar",
+    "openLink": "Abrir link",
+    "unsafeUrl": "Daqui só dá para abrir links http e https.",
+    "optional": "opcional",
+    "choose": "Escolha…",
+    "required": "Obrigatório",
+    "notANumber": "Digite um número",
+    "notAnInteger": "Digite um número inteiro",
+    "tooSmall": "No mínimo {{value}}",
+    "tooLarge": "No máximo {{value}}",
+    "tooShort": "No mínimo {{count}} caracteres",
+    "tooLong": "No máximo {{count}} caracteres",
+    "tooFew": "Escolha pelo menos {{count}}",
+    "tooMany": "Escolha no máximo {{count}}",
+    "notAnEmail": "Digite um e-mail",
+    "notAUri": "Digite o endereço completo, como https://exemplo.com.br",
+    "notADate": "Digite uma data",
+    "notADateTime": "Digite data e hora",
+    "notTheFormat": "{{format}} inválido"
+  },
+  "sideQuestion": {
+    "label": "Pergunta paralela · fora da conversa",
+    "pending": "Respondendo em paralelo",
+    "failed": "A pergunta paralela falhou.",
+    "dismiss": "Dispensar",
+    "unsupported": "Este assistente não responde perguntas paralelas.",
+    "noSession": "Pergunta paralela precisa de uma conversa já iniciada; esta ainda não começou."
+  },
+  "sendMenu": {
+    "trigger": "Opções de envio",
+    "queue": {
+      "label": "Pôr na fila",
+      "descriptionResponding": "Envia quando esta resposta terminar",
+      "descriptionBackground": "Envia quando o trabalho em segundo plano terminar"
+    },
+    "steer": {
+      "label": "Intervir",
+      "description": "Entra nesta resposta; lido na próxima ação"
+    },
+    "sideQuestion": {
+      "label": "Pergunta paralela",
+      "description": "Pergunta agora, por fora; a conversa não vê"
+    },
+    "stop": {
+      "label": "Parar",
+      "description": "Encerra a resposta em andamento"
+    },
+    "sendAnyway": {
+      "label": "Enviar mesmo assim",
+      "description": "Envia agora; isso para o trabalho em segundo plano"
+    }
   }
 }

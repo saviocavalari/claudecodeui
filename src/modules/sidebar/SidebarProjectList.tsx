@@ -40,6 +40,7 @@ export default function SidebarProjectList({
   onSaveProjectFolder,
   onDeleteProject,
   onSessionSelect,
+  onArchiveSession,
   onDeleteSession,
   onForkSession,
   onNewSession,
@@ -136,6 +137,7 @@ export default function SidebarProjectList({
                 existingFolders={existingFolders}
                 onDeleteProject={onDeleteProject}
                 onSessionSelect={onSessionSelect}
+                onArchiveSession={onArchiveSession}
                 onDeleteSession={onDeleteSession}
                 onForkSession={onForkSession}
                 onLoadMoreSessions={onLoadMoreSessions}

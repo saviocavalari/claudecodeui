@@ -33,7 +33,10 @@
   },
   "binaryFile": {
     "title": "Arquivo binário",
-    "message": "O arquivo \"{{fileName}}\" não pode ser exibido no editor de texto porque é um arquivo binário."
+    "message": "O arquivo \"{{fileName}}\" não pode ser exibido no editor de texto porque é um arquivo binário.",
+    "download": "Baixar arquivo original",
+    "downloading": "Baixando…",
+    "downloadFailed": "Não foi possível baixar o arquivo. Tente de novo."
   },
   "filePreview": {
     "loading": "Carregando pré-visualização...",

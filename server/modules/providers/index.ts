@@ -3,6 +3,7 @@ export { providerSkillsService } from './services/skills.service.js';
 export { providerMcpService } from './services/mcp.service.js';
 export { providerAccountsService } from './services/provider-accounts.service.js';
 export { providerUsageLimitsService } from './services/provider-usage-limits.service.js';
+export { providerCapabilitiesService } from './services/provider-capabilities.service.js';
 export { providerRuntimeService } from './services/provider-runtime.service.js';
 
 // providerModelsService: used by Commands to list models and resolve the active session model.
@@ -21,3 +22,12 @@ export { closeSessionsWatcher } from './services/sessions-watcher.service.js';
 
 export { initializeSessionAutoArchive } from './services/session-auto-archive.service.js';
 export { closeSessionAutoArchive } from './services/session-auto-archive.service.js';
+// sideQuestionsService: used by the websocket module's `chat.side_question` handler and
+// the provider routes' side-question endpoints. State is in memory; a new
+// service instance starts empty, as after a CloudCLI restart.
+export {
+  createSideQuestionsService,
+  MAX_CONCURRENT_SIDE_QUESTIONS_PER_SESSION,
+  MAX_SIDE_QUESTIONS_PER_SESSION,
+  sideQuestionsService,
+} from './services/side-questions.service.js';
